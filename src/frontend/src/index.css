@@ -123,22 +123,6 @@
   outline-offset: 2px;
 }
 
-/* Animated EQ bars */
-@keyframes bar-dance {
-  0%,
-  100% {
-    transform: scaleY(var(--bar-min));
-  }
-  50% {
-    transform: scaleY(var(--bar-max));
-  }
-}
-
-.eq-bar {
-  transform-origin: bottom;
-  animation: bar-dance var(--bar-duration) ease-in-out var(--bar-delay) infinite;
-}
-
 /* Glow pulse for the EQ curve */
 @keyframes glow-pulse {
   0%,

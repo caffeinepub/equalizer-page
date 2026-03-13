@@ -25,17 +25,6 @@ const PRESETS: Record<string, number[]> = {
 
 const PRESET_NAMES = Object.keys(PRESETS);
 
-// Animate bars config - generated once
-const BAR_COUNT = 50;
-const BARS = Array.from({ length: BAR_COUNT }, (_, i) => ({
-  id: i,
-  minH: 0.1 + Math.random() * 0.2,
-  maxH: 0.4 + Math.random() * 0.55,
-  duration: 0.8 + Math.random() * 1.6,
-  delay: Math.random() * 2,
-  hue: 180 + Math.random() * 80,
-}));
-
 function getEQCurvePath(
   gains: number[],
   width: number,
@@ -219,33 +208,6 @@ function EQCurve({ gains }: { gains: number[] }) {
   );
 }
 
-function VisualizerBars() {
-  return (
-    <div
-      className="flex items-end justify-center gap-[2px] w-full h-full"
-      data-ocid="eq.visualizer.panel"
-    >
-      {BARS.map((bar) => (
-        <div
-          key={bar.id}
-          className="eq-bar flex-1 rounded-t-sm"
-          style={
-            {
-              "--bar-min": bar.minH,
-              "--bar-max": bar.maxH,
-              "--bar-duration": `${bar.duration}s`,
-              "--bar-delay": `${bar.delay}s`,
-              height: "100%",
-              maxWidth: "14px",
-              background: `oklch(0.45 0.12 ${bar.hue} / 0.55)`,
-            } as React.CSSProperties
-          }
-        />
-      ))}
-    </div>
-  );
-}
-
 export default function App() {
   const [gains, setGains] = useState<number[]>(PRESETS.Flat);
   const [activePreset, setActivePreset] = useState<string>("Flat");
@@ -355,15 +317,11 @@ export default function App() {
           </div>
         </section>
 
-        <section className="relative rounded-2xl border border-border/50 overflow-hidden bg-card/40 backdrop-blur-sm">
-          <div className="absolute inset-0 px-6 pb-4 pt-2 opacity-60">
-            <VisualizerBars />
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-card/20" />
-          <div className="relative z-10 h-48 px-2 py-2">
+        <section className="rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm">
+          <div className="h-48 px-2 py-2">
             <EQCurve gains={gains} />
           </div>
-          <div className="relative z-10 flex px-6 pb-3">
+          <div className="flex px-6 pb-3">
             {BANDS.map((b) => (
               <div key={b.freq} className="flex-1 text-center">
                 <span className="text-[9px] text-muted-foreground/60 tracking-wide">
