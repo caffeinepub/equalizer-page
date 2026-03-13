@@ -16,6 +16,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/assets/fonts/JetBrainsMono.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0.09 0.015 265;
@@ -60,77 +67,110 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "Satoshi", "General Sans", sans-serif;
+    font-family: "Satoshi", sans-serif;
   }
 }
 
-/* Vertical range slider */
-.slider-vertical {
+/* ── Music Player Card ────────────────────────────────────────── */
+.player-card {
+  background: linear-gradient(
+    135deg,
+    oklch(0.115 0.022 265) 0%,
+    oklch(0.1 0.018 265) 100%
+  );
+  border: 1px solid oklch(0.22 0.028 265);
+  box-shadow: inset 0 1px 0 oklch(0.3 0.04 265 / 0.4), 0 4px 24px
+    oklch(0 0 0 / 0.4);
+}
+
+/* ── Play Button ──────────────────────────────────────────────── */
+.play-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    circle at 35% 35%,
+    oklch(0.88 0.18 192),
+    oklch(0.72 0.2 192)
+  );
+  color: oklch(0.09 0.015 265);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 20px oklch(0.78 0.18 192 / 0.6), 0 0 40px
+    oklch(0.78 0.18 192 / 0.3), 0 4px 12px oklch(0 0 0 / 0.4), inset 0 1px 0
+    oklch(1 0 0 / 0.2);
+  transition: box-shadow 0.2s;
+}
+
+.play-btn:hover {
+  box-shadow: 0 0 28px oklch(0.78 0.18 192 / 0.8), 0 0 56px
+    oklch(0.78 0.18 192 / 0.4), 0 4px 16px oklch(0 0 0 / 0.5), inset 0 1px 0
+    oklch(1 0 0 / 0.2);
+}
+
+/* ── Player Control Buttons ───────────────────────────────────── */
+.player-ctrl-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: oklch(0.5 0.04 220);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.player-ctrl-btn:hover {
+  color: oklch(0.78 0.18 192);
+  background: oklch(0.78 0.18 192 / 0.06);
+  border-color: oklch(0.78 0.18 192 / 0.2);
+}
+
+/* ── Volume Slider ────────────────────────────────────────────── */
+.volume-slider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Fader Vertical Range Input ───────────────────────────────── */
+.fader-input {
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 36px;
-  height: 180px;
-  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  cursor: ns-resize;
   appearance: none;
   -webkit-appearance: none;
   background: transparent;
   outline: none;
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  z-index: 10;
 }
 
-.slider-vertical::-webkit-slider-runnable-track {
-  width: 4px;
-  border-radius: 2px;
-  background: oklch(0.18 0.025 265);
-}
-
-.slider-vertical::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: oklch(0.78 0.18 192);
-  box-shadow: 0 0 8px oklch(0.78 0.18 192 / 0.8), 0 0 20px
-    oklch(0.78 0.18 192 / 0.4);
-  cursor: pointer;
-  margin-inline: -7px;
-  transition: box-shadow 0.2s, transform 0.15s;
-}
-
-.slider-vertical::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 12px oklch(0.78 0.18 192), 0 0 30px oklch(0.78 0.18 192 / 0.6);
-  transform: scale(1.2);
-}
-
-.slider-vertical::-moz-range-track {
-  width: 4px;
-  border-radius: 2px;
-  background: oklch(0.18 0.025 265);
-}
-
-.slider-vertical::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: oklch(0.78 0.18 192);
-  box-shadow: 0 0 8px oklch(0.78 0.18 192 / 0.8);
-  cursor: pointer;
-  border: none;
-  transition: box-shadow 0.2s;
-}
-
-.slider-vertical:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid oklch(0.78 0.18 192);
-  outline-offset: 2px;
-}
-
-/* Glow pulse for the EQ curve */
+/* ── EQ Curve Glow ────────────────────────────────────────────── */
 @keyframes glow-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 4px oklch(0.78 0.18 192 / 0.8));
+    filter: drop-shadow(0 0 4px oklch(0.78 0.18 192 / 0.7));
   }
   50% {
-    filter: drop-shadow(0 0 12px oklch(0.78 0.18 192));
+    filter: drop-shadow(0 0 10px oklch(0.82 0.18 192));
   }
 }
 
@@ -138,8 +178,21 @@
   animation: glow-pulse 3s ease-in-out infinite;
 }
 
-/* Preset button glow on active */
-.preset-active {
-  box-shadow: 0 0 16px oklch(0.78 0.18 192 / 0.6), inset 0 0 12px
-    oklch(0.78 0.18 192 / 0.15);
+/* ── Scrollbar Styling ────────────────────────────────────────── */
+::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.22 0.025 265);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.3 0.03 265);
 }
