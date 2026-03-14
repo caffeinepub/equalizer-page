@@ -3,61 +3,54 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: "Bricolage Grotesque";
-  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
-  font-weight: 200 800;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("/assets/fonts/Satoshi.woff2") format("woff2");
-  font-weight: 300 700;
-  font-display: swap;
-}
-
-@font-face {
   font-family: "JetBrains Mono";
   src: url("/assets/fonts/JetBrainsMono.woff2") format("woff2");
   font-weight: 300 700;
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
 @layer base {
   :root {
-    --background: 0.07 0.015 265;
-    --foreground: 0.94 0.02 200;
-    --card: 0.1 0.018 265;
-    --card-foreground: 0.94 0.02 200;
-    --popover: 0.1 0.018 265;
-    --popover-foreground: 0.94 0.02 200;
-    --primary: 0.78 0.18 192;
-    --primary-foreground: 0.07 0.015 265;
-    --secondary: 0.14 0.025 265;
-    --secondary-foreground: 0.85 0.04 200;
-    --muted: 0.13 0.02 265;
-    --muted-foreground: 0.55 0.04 220;
-    --accent: 0.85 0.22 70;
-    --accent-foreground: 0.07 0.015 265;
+    --background: 0.1 0.04 255;
+    --foreground: 0.97 0.02 90;
+    --card: 0.12 0.04 255;
+    --card-foreground: 0.97 0.02 90;
+    --popover: 0.12 0.04 255;
+    --popover-foreground: 0.97 0.02 90;
+    --primary: 0.82 0.18 85;
+    --primary-foreground: 0.1 0.04 255;
+    --secondary: 0.16 0.05 255;
+    --secondary-foreground: 0.82 0.18 85;
+    --muted: 0.14 0.035 255;
+    --muted-foreground: 0.5 0.05 255;
+    --accent: 0.75 0.18 85;
+    --accent-foreground: 0.1 0.04 255;
     --destructive: 0.62 0.22 25;
-    --destructive-foreground: 0.94 0.02 200;
-    --border: 0.18 0.025 265;
-    --input: 0.15 0.022 265;
-    --ring: 0.78 0.18 192;
+    --destructive-foreground: 0.97 0.02 90;
+    --border: 0.22 0.06 255;
+    --input: 0.16 0.05 255;
+    --ring: 0.82 0.18 85;
     --radius: 0.5rem;
-    --chart-1: 0.78 0.18 192;
-    --chart-2: 0.85 0.22 70;
-    --chart-3: 0.72 0.22 145;
-    --chart-4: 0.65 0.2 240;
-    --chart-5: 0.68 0.22 300;
-    --sidebar: 0.07 0.015 265;
-    --sidebar-foreground: 0.94 0.02 200;
-    --sidebar-primary: 0.78 0.18 192;
-    --sidebar-primary-foreground: 0.07 0.015 265;
-    --sidebar-accent: 0.14 0.025 265;
-    --sidebar-accent-foreground: 0.85 0.04 200;
-    --sidebar-border: 0.18 0.025 265;
-    --sidebar-ring: 0.78 0.18 192;
+    --chart-1: 0.82 0.18 85;
+    --chart-2: 0.65 0.14 85;
+    --chart-3: 0.45 0.1 255;
+    --chart-4: 0.3 0.08 255;
+    --chart-5: 0.55 0.12 85;
+    --sidebar: 0.1 0.04 255;
+    --sidebar-foreground: 0.97 0.02 90;
+    --sidebar-primary: 0.82 0.18 85;
+    --sidebar-primary-foreground: 0.1 0.04 255;
+    --sidebar-accent: 0.16 0.05 255;
+    --sidebar-accent-foreground: 0.82 0.18 85;
+    --sidebar-border: 0.22 0.06 255;
+    --sidebar-ring: 0.82 0.18 85;
   }
 }
 
@@ -67,155 +60,238 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "Satoshi", sans-serif;
+    font-family: "JetBrains Mono", monospace;
+    background: #0a1628;
+    min-height: 100vh;
   }
 }
 
-/* ── Engineering Panel ────────────────────────────────────────────── */
-.eng-panel {
-  background: linear-gradient(
-    160deg,
-    oklch(0.115 0.022 265) 0%,
-    oklch(0.09 0.016 265) 100%
-  );
-  border: 1px solid oklch(0.22 0.028 265);
-  box-shadow: inset 0 1px 0 oklch(0.3 0.04 265 / 0.4), inset 0 -1px 0
-    oklch(0.05 0.01 265 / 0.6), 0 4px 32px oklch(0 0 0 / 0.4);
+/* ── Gold Glow Animations ────────────────────────────────────── */
+@keyframes gold-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4), 0 0 40px rgba(255, 215, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(255, 215, 0, 0.7), 0 0 70px
+      rgba(255, 215, 0, 0.35);
+  }
 }
 
-/* ── Engineering Label ──────────────────────────────────────────── */
-.eng-label {
+@keyframes battery-charge-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5), inset 0 0 15px
+      rgba(255, 215, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.9), inset 0 0 25px
+      rgba(255, 215, 0, 0.2);
+  }
+}
+
+@keyframes book-open-left {
+  0% {
+    transform: perspective(1200px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(1200px) rotateY(-110deg);
+  }
+}
+
+@keyframes book-open-right {
+  0% {
+    transform: perspective(1200px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(1200px) rotateY(110deg);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes charging-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes led-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes unlock-flash {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(255, 215, 0, 0.8), 0 0 120px
+      rgba(255, 215, 0, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+}
+
+.book-page-left {
+  animation: book-open-left 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.book-page-right {
+  animation: book-open-right 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+.gold-pulse {
+  animation: gold-pulse 2s ease-in-out infinite;
+}
+.battery-full {
+  animation: battery-charge-glow 1.5s ease-in-out infinite;
+}
+.charging-text {
+  animation: charging-pulse 1s ease-in-out infinite;
+}
+
+/* ── Glass Panel ─────────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(13, 31, 60, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1), inset 0 1px 0
+    rgba(255, 215, 0, 0.08);
+  border-radius: 12px;
+}
+
+.glass-panel-bright {
+  background: rgba(17, 34, 68, 0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.15), inset 0 1px 0
+    rgba(255, 215, 0, 0.12);
+  border-radius: 12px;
+}
+
+/* ── Gold Text ───────────────────────────────────────────────── */
+.gold-text {
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+}
+
+.gold-label {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: oklch(0.5 0.08 192);
-  white-space: nowrap;
+  color: rgba(255, 215, 0, 0.7);
 }
 
-/* ── Music Player Card ────────────────────────────────────────── */
-.player-card {
-  background: linear-gradient(
-    135deg,
-    oklch(0.115 0.022 265) 0%,
-    oklch(0.1 0.018 265) 100%
-  );
-  border: 1px solid oklch(0.22 0.028 265);
-  box-shadow: inset 0 1px 0 oklch(0.3 0.04 265 / 0.4), 0 4px 24px
-    oklch(0 0 0 / 0.4);
-}
-
-/* ── Play Button ──────────────────────────────────────────────── */
-.play-btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(
-    circle at 35% 35%,
-    oklch(0.88 0.18 192),
-    oklch(0.72 0.2 192)
-  );
-  color: oklch(0.07 0.015 265);
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 0 20px oklch(0.78 0.18 192 / 0.6), 0 0 40px
-    oklch(0.78 0.18 192 / 0.3), 0 4px 12px oklch(0 0 0 / 0.4), inset 0 1px 0
-    oklch(1 0 0 / 0.2);
-  transition: box-shadow 0.2s;
-}
-
-.play-btn:hover {
-  box-shadow: 0 0 28px oklch(0.78 0.18 192 / 0.8), 0 0 56px
-    oklch(0.78 0.18 192 / 0.4), 0 4px 16px oklch(0 0 0 / 0.5), inset 0 1px 0
-    oklch(1 0 0 / 0.2);
-}
-
-/* ── Player Control Buttons ──────────────────────────────────────── */
-.player-ctrl-btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: oklch(0.5 0.04 220);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
-}
-
-.player-ctrl-btn:hover {
-  color: oklch(0.78 0.18 192);
-  background: oklch(0.78 0.18 192 / 0.06);
-  border-color: oklch(0.78 0.18 192 / 0.2);
-}
-
-/* ── Volume Slider ──────────────────────────────────────────────── */
-.volume-slider {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  margin: 0;
-  padding: 0;
-}
-
-/* ── Fader Vertical Range Input ───────────────────────────────────── */
-.fader-input {
+/* ── EQ Slider ───────────────────────────────────────────────── */
+.eq-slider-input {
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 100%;
-  height: 100%;
-  cursor: ns-resize;
-  appearance: none;
   -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 120px;
   background: transparent;
   outline: none;
-  opacity: 0;
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: 0;
-  z-index: 10;
+  cursor: ns-resize;
 }
 
-/* ── EQ Curve Glow ─────────────────────────────────────────────── */
-@keyframes glow-pulse {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 4px oklch(0.78 0.18 192 / 0.7));
-  }
-  50% {
-    filter: drop-shadow(0 0 10px oklch(0.82 0.18 192));
-  }
-}
-
-.eq-curve-path {
-  animation: glow-pulse 3s ease-in-out infinite;
-}
-
-/* ── Scrollbar Styling ────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  height: 4px;
+.eq-slider-input::-webkit-slider-runnable-track {
   width: 4px;
+  background: rgba(255, 215, 0, 0.15);
+  border-radius: 2px;
+  margin: auto;
 }
 
+.eq-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffd700, #ffa500);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+  cursor: grab;
+  margin-left: -8px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.eq-slider-input:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 1);
+}
+
+.eq-slider-input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffd700, #ffa500);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+  cursor: grab;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ── Volume Slider ───────────────────────────────────────────── */
+.vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 215, 0, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffd700;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+  cursor: pointer;
+}
+
+/* ── Rotary Knob ─────────────────────────────────────────────── */
+.knob-container {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.22 0.025 265);
+  background: rgba(255, 215, 0, 0.2);
   border-radius: 2px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.3 0.03 265);
+  background: rgba(255, 215, 0, 0.4);
 }

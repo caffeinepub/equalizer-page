@@ -1,2959 +1,2238 @@
-import {
-  LucideActivity,
-  LucideChevronFirst,
-  LucideChevronLast,
-  LucideLink,
-  LucideMusic,
-  LucidePause,
-  LucidePlay,
-  LucidePower,
-  LucideRadio,
-  LucideRepeat,
-  LucideShuffle,
-  LucideUploadCloud,
-  LucideVolume2,
-  LucideZap,
-} from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-// ── Tracks ────────────────────────────────────────────────────────────────────
-const TRACKS = [
-  {
-    title: "Midnight Drive",
-    artist: "Neon Collective",
-    duration: "4:32",
-    totalSec: 272,
-    art: "/assets/generated/album-midnight-drive.dim_200x200.jpg",
-  },
-  {
-    title: "Ocean Deep",
-    artist: "Aqua Waves",
-    duration: "3:58",
-    totalSec: 238,
-    art: "/assets/generated/album-ocean-deep.dim_200x200.jpg",
-  },
-  {
-    title: "Pulse Wave",
-    artist: "The Frequency",
-    duration: "5:14",
-    totalSec: 314,
-    art: "/assets/generated/album-pulse-wave.dim_200x200.jpg",
-  },
-  {
-    title: "Neon Lights",
-    artist: "Synthwave Project",
-    duration: "4:07",
-    totalSec: 247,
-    art: "/assets/generated/album-neon-lights.dim_200x200.jpg",
-  },
-];
-
-// ── 30-Band Frequencies ───────────────────────────────────────────────────────
-const BANDS_30 = [
-  { freq: "25", label: "25" },
-  { freq: "31", label: "31" },
-  { freq: "40", label: "40" },
-  { freq: "50", label: "50" },
-  { freq: "63", label: "63" },
-  { freq: "80", label: "80" },
-  { freq: "100", label: "100" },
-  { freq: "125", label: "125" },
-  { freq: "160", label: "160" },
-  { freq: "200", label: "200" },
-  { freq: "250", label: "250" },
-  { freq: "315", label: "315" },
-  { freq: "400", label: "400" },
-  { freq: "500", label: "500" },
-  { freq: "630", label: "630" },
-  { freq: "800", label: "800" },
-  { freq: "1k", label: "1k" },
-  { freq: "1.25k", label: "1.25k" },
-  { freq: "1.6k", label: "1.6k" },
-  { freq: "2k", label: "2k" },
-  { freq: "2.5k", label: "2.5k" },
-  { freq: "3.15k", label: "3.15k" },
-  { freq: "4k", label: "4k" },
-  { freq: "5k", label: "5k" },
-  { freq: "6.3k", label: "6.3k" },
-  { freq: "8k", label: "8k" },
-  { freq: "10k", label: "10k" },
-  { freq: "12.5k", label: "12.5k" },
-  { freq: "16k", label: "16k" },
-  { freq: "20k", label: "20k" },
-];
-
-const FLAT_30 = Array(30).fill(0);
-
-// ── Presets ───────────────────────────────────────────────────────────────────
-const PRESETS_30: Record<string, number[]> = {
-  Flat: FLAT_30,
-  Rock: [
-    5, 5, 4, 3, 2, 1, 0, -1, -2, -2, -2, -1, 0, 1, 2, 3, 2, 1, 0, 0, 1, 2, 3, 4,
-    5, 6, 5, 4, 3, 3,
-  ],
-  Pop: [
-    -1, -1, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 0, -1, -1, -1, 0, 0, 0, -1, -1, -1,
-    -2, -2, -2, -1, 0, 0, 0,
-  ],
-  Classical: [
-    4, 4, 3, 3, 2, 2, 1, 1, 0, 0, -1, -1, -1, -2, -2, -2, -1, -1, 0, 0, 0, 0, 1,
-    1, 2, 2, 3, 3, 4, 4,
-  ],
-  Jazz: [
-    3, 3, 2, 2, 1, 1, 0, 0, 1, 1, 2, 2, 1, 0, -1, -1, -1, 0, 1, 1, 2, 2, 2, 1,
-    1, 2, 2, 3, 3, 3,
-  ],
-  Electronic: [
-    6, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3, -3, -2, -1, 0, 1, 2, 2, 1, 0, 0, 1, 2,
-    3, 4, 5, 6, 6, 5, 5,
-  ],
-  "Bass Boost": [
-    8, 8, 7, 7, 6, 6, 5, 4, 3, 2, 1, 0, 0, -1, -1, -2, -2, -2, -2, -2, -2, -2,
-    -2, -2, -2, -2, -2, -1, -1, -1,
-  ],
-  Vocal: [
-    -2, -2, -2, -1, -1, 0, 0, 1, 2, 2, 3, 3, 4, 5, 6, 6, 5, 5, 4, 4, 3, 3, 2, 1,
-    0, -1, -1, -2, -2, -2,
-  ],
-};
-
-const PRESET_NAMES = Object.keys(PRESETS_30);
-
-// DJ effect offsets per switch (which bands they affect and by how much)
-const DJ_EFFECTS: Record<string, number[]> = {
-  REVERB: [
-    0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, 0, 0,
-    0, 0, 0, 0, 0, 0,
-  ],
-  DELAY: [
-    0, 0, 0, 1, 1, 1, 0, 0, 0, 0, -1, -1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, -1,
-    -1, 0, 0, 0, 0, 0,
-  ],
-  CHORUS: [
-    0, 0, 1, 1, 1, 0, 0, -1, -1, 0, 0, 1, 1, 0, 0, -1, -1, 0, 0, 1, 1, 0, 0, -1,
-    0, 0, 1, 1, 0, 0,
-  ],
-  FLARE: [
-    2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-    2, 2, 2, 1, 1,
-  ],
-  GATE: [
-    0, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0,
-  ],
-  COMPRESS: [
-    1, 1, 1, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, -1, -1,
-    0, 0, 1, 1, 0, 0,
-  ],
-  SATURATE: [
-    1, 1, 2, 2, 1, 1, 0, 0, -1, -1, 0, 0, 1, 1, 0, 0, -1, -1, 0, 0, 0, 1, 1, 2,
-    1, 0, -1, 0, 0, 0,
-  ],
-  SPREAD: [
-    0, 0, 0, -1, -1, 0, 0, 0, 0, 1, 1, 0, 0, 0, -1, -1, 0, 0, 0, 0, 1, 1, 0, 0,
-    0, -1, -1, 0, 0, 0,
-  ],
-};
-
-const DJ_SWITCH_NAMES = [
-  "REVERB",
-  "DELAY",
-  "CHORUS",
-  "FLARE",
-  "GATE",
-  "COMPRESS",
-  "SATURATE",
-  "SPREAD",
-];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatTime(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+// ─── Types ──────────────────────────────────────────────────────────────────
+interface Track {
+  id: string;
+  name: string;
+  url: string;
+  duration?: number;
 }
 
-function getEQCurvePath(
-  gains: number[],
-  width: number,
-  height: number,
-): string {
-  const padX = 24;
-  const padY = 16;
-  const usableW = width - padX * 2;
-  const usableH = height - padY * 2;
-  const midY = padY + usableH / 2;
-  const points = gains.map((g, i) => ({
-    x: padX + (i / (gains.length - 1)) * usableW,
-    y: midY - (g / 12) * (usableH / 2),
-  }));
-  if (points.length < 2) return "";
-  let d = `M ${points[0].x},${points[0].y}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(i - 1, 0)];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[Math.min(i + 2, points.length - 1)];
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
-  }
-  return d;
-}
-
-function getAreaPath(curvePath: string, width: number, height: number): string {
-  if (!curvePath) return "";
-  const padX = 24;
-  const padY = 16;
-  const usableH = height - padY * 2;
-  const midY = padY + usableH / 2;
-  return `${curvePath} L ${width - padX},${midY} L ${padX},${midY} Z`;
-}
-
-const SVG_W = 900;
-const SVG_H = 160;
-
-// ── EQ Curve Component ────────────────────────────────────────────────────────
-function EQCurve({ gains }: { gains: number[] }) {
-  const curvePath = useMemo(() => getEQCurvePath(gains, SVG_W, SVG_H), [gains]);
-  const areaPath = useMemo(
-    () => getAreaPath(curvePath, SVG_W, SVG_H),
-    [curvePath],
-  );
-  const gridLines = [-12, -6, 0, 6, 12];
-  const padY = 16;
-  const usableH = SVG_H - padY * 2;
-  const midY = padY + usableH / 2;
-  return (
-    <svg
-      viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-      className="w-full h-full"
-      data-ocid="eq.curve.canvas_target"
-      preserveAspectRatio="none"
-      role="img"
-      aria-label="EQ frequency response curve"
-    >
-      <defs>
-        <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop
-            offset="0%"
-            stopColor="oklch(0.78 0.18 192)"
-            stopOpacity="0.4"
-          />
-          <stop
-            offset="100%"
-            stopColor="oklch(0.78 0.18 192)"
-            stopOpacity="0.02"
-          />
-        </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <filter id="glowStrong">
-          <feGaussianBlur stdDeviation="6" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      {gridLines.map((db) => {
-        const y = midY - (db / 12) * (usableH / 2);
-        return (
-          <g key={db}>
-            <line
-              x1={24}
-              y1={y}
-              x2={SVG_W - 24}
-              y2={y}
-              stroke={
-                db === 0
-                  ? "oklch(0.55 0.04 220 / 0.6)"
-                  : "oklch(0.22 0.02 265 / 0.6)"
-              }
-              strokeWidth={db === 0 ? 1.5 : 0.7}
-              strokeDasharray={db === 0 ? "none" : "3 5"}
-            />
-            <text
-              x={12}
-              y={y + 4}
-              fill="oklch(0.42 0.04 220)"
-              fontSize="9"
-              textAnchor="middle"
-              fontFamily="JetBrains Mono, monospace"
-            >
-              {db > 0 ? `+${db}` : db}
-            </text>
-          </g>
-        );
-      })}
-      <motion.path
-        d={areaPath}
-        fill="url(#curveGrad)"
-        animate={{ d: areaPath }}
-        transition={{ type: "spring", stiffness: 200, damping: 30 }}
-      />
-      <motion.path
-        d={curvePath}
-        fill="none"
-        stroke="oklch(0.78 0.18 192 / 0.3)"
-        strokeWidth={10}
-        filter="url(#glowStrong)"
-        animate={{ d: curvePath }}
-        transition={{ type: "spring", stiffness: 200, damping: 30 }}
-      />
-      <motion.path
-        className="eq-curve-path"
-        d={curvePath}
-        fill="none"
-        stroke="oklch(0.84 0.18 192)"
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        filter="url(#glow)"
-        animate={{ d: curvePath }}
-        transition={{ type: "spring", stiffness: 200, damping: 30 }}
-      />
-    </svg>
-  );
-}
-
-// ── 30-Band EQ Fader ──────────────────────────────────────────────────────────
-const FADER_H = 160;
-
-function EQFader({
-  index,
-  band,
-  gain,
-  onChange,
-}: {
-  index: number;
-  band: { freq: string; label: string };
+interface EngineState {
+  on: boolean;
   gain: number;
-  onChange: (i: number, v: number) => void;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const boostHeight = gain > 0 ? (gain / 12) * (FADER_H / 2) : 0;
-  const cutHeight = gain < 0 ? (-gain / 12) * (FADER_H / 2) : 0;
-  const thumbY = ((12 - gain) / 24) * FADER_H;
-  return (
-    <div className="flex flex-col items-center gap-1" style={{ minWidth: 36 }}>
-      <span
-        className="tabular-nums text-center leading-none"
-        style={{
-          fontSize: 9,
-          fontFamily: "'JetBrains Mono', monospace",
-          color:
-            gain > 0
-              ? "oklch(0.78 0.18 192)"
-              : gain < 0
-                ? "oklch(0.72 0.22 300)"
-                : "oklch(0.45 0.04 220)",
-          minWidth: 28,
-        }}
-      >
-        {gain >= 0 ? `+${gain}` : `${gain}`}
-      </span>
-      <div
-        className="relative fader-track"
-        style={{ width: 28, height: FADER_H }}
-      >
-        <div
-          className="absolute left-1/2 -translate-x-1/2 rounded-full"
-          style={{
-            width: 4,
-            top: 0,
-            bottom: 0,
-            background: "oklch(0.16 0.02 265)",
-            border: "1px solid oklch(0.22 0.025 265)",
-          }}
-        />
-        {gain > 0 && (
-          <div
-            className="absolute left-1/2 -translate-x-1/2 rounded-sm"
-            style={{
-              width: 4,
-              height: boostHeight,
-              bottom: FADER_H / 2,
-              background: dragging
-                ? "oklch(0.88 0.2 192)"
-                : "oklch(0.72 0.2 192 / 0.9)",
-              transition: "height 0.1s",
-            }}
-          />
-        )}
-        {gain < 0 && (
-          <div
-            className="absolute left-1/2 -translate-x-1/2 rounded-sm"
-            style={{
-              width: 4,
-              height: cutHeight,
-              top: FADER_H / 2,
-              background: dragging
-                ? "oklch(0.78 0.22 300)"
-                : "oklch(0.62 0.22 300 / 0.85)",
-              transition: "height 0.1s",
-            }}
-          />
-        )}
-        <div
-          className="absolute left-0 right-0"
-          style={{
-            top: FADER_H / 2,
-            height: 1,
-            background: "oklch(0.28 0.03 265 / 0.8)",
-          }}
-        />
-        <div
-          className="absolute left-1/2 -translate-x-1/2"
-          style={{
-            top: thumbY - 9,
-            width: 22,
-            height: 18,
-            borderRadius: 3,
-            background: dragging
-              ? "linear-gradient(180deg, oklch(0.55 0.06 265), oklch(0.32 0.04 265))"
-              : "linear-gradient(180deg, oklch(0.42 0.04 265), oklch(0.24 0.03 265))",
-            border: dragging
-              ? "1px solid oklch(0.78 0.18 192 / 0.9)"
-              : "1px solid oklch(0.35 0.04 265)",
-            pointerEvents: "none",
-          }}
-        >
-          {[0, 1, 2].map((l) => (
-            <div
-              key={l}
-              style={{
-                position: "absolute",
-                left: 4,
-                right: 4,
-                top: 4 + l * 4,
-                height: 1,
-                background: "oklch(0.45 0.03 265 / 0.7)",
-                borderRadius: 1,
-              }}
-            />
-          ))}
-        </div>
-        <input
-          type="range"
-          min={-12}
-          max={12}
-          step={1}
-          value={gain}
-          onChange={(e) => onChange(index, Number(e.target.value))}
-          onMouseDown={() => setDragging(true)}
-          onMouseUp={() => setDragging(false)}
-          onTouchStart={() => setDragging(true)}
-          onTouchEnd={() => setDragging(false)}
-          data-ocid={`eq.band.slider.${index + 1}`}
-          aria-label={`${band.label} Hz gain`}
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0,
-            cursor: "ns-resize",
-            width: "100%",
-            height: "100%",
-            writingMode: "vertical-lr" as any,
-            direction: "rtl",
-          }}
-        />
-      </div>
-      <span
-        className="text-center leading-none"
-        style={{
-          fontSize: 8,
-          fontFamily: "'Satoshi', sans-serif",
-          color: "oklch(0.40 0.03 220)",
-          minWidth: 28,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {band.label}
-      </span>
-    </div>
-  );
 }
 
-// ── Music Player ──────────────────────────────────────────────────────────────
-function MusicPlayer() {
-  // ── User tracks (real files) ──────────────────────────────────────
-  const [userTracks, setUserTracks] = useState<
-    { name: string; url: string; size: string }[]
-  >([]);
-  const [trackIdx, setTrackIdx] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.75);
-  const [shuffle, setShuffle] = useState(false);
-  const [repeat, setRepeat] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [freqBars, setFreqBars] = useState<number[]>(Array(32).fill(0));
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const objectUrlsRef = useRef<string[]>([]);
-
-  const isUsingRealTracks = userTracks.length > 0;
-  const currentTrack = isUsingRealTracks ? userTracks[trackIdx] : null;
-
-  // ── Clean up object URLs on unmount ──────────────────────────────
-  useEffect(() => {
-    return () => {
-      for (const u of objectUrlsRef.current) URL.revokeObjectURL(u);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  // ── Create/wire audio element once ───────────────────────────────
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
-  useEffect(() => {
-    const audio = new Audio();
-    audio.volume = volume;
-    audio.preload = "metadata";
-    audioRef.current = audio;
-
-    audio.addEventListener("timeupdate", () =>
-      setCurrentTime(audio.currentTime),
-    );
-    audio.addEventListener("durationchange", () =>
-      setDuration(Number.isFinite(audio.duration) ? audio.duration : 0),
-    );
-    audio.addEventListener("ended", () => {
-      if (repeat) {
-        audio.currentTime = 0;
-        audio.play();
-      } else {
-        setTrackIdx((prev) => {
-          const next = (prev + 1) % Math.max(1, userTracks.length);
-          return next;
-        });
-        setIsPlaying(false);
-      }
-    });
-
-    return () => {
-      audio.pause();
-      audio.src = "";
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Volume sync ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume]);
-
-  // ── Repeat sync ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.loop = repeat;
-  }, [repeat]);
-
-  // ── Load track when index or userTracks changes ───────────────────
-  // biome-ignore lint/correctness/useExhaustiveDependencies: isPlaying intentionally excluded
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !isUsingRealTracks) return;
-    const track = userTracks[trackIdx];
-    if (!track) return;
-    audio.pause();
-    audio.src = track.url;
-    audio.load();
-    setCurrentTime(0);
-    setDuration(0);
-    if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trackIdx, userTracks]);
-
-  // ── Play / pause ─────────────────────────────────────────────────
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !isUsingRealTracks) return;
-    if (isPlaying) {
-      audio.play().catch(() => setIsPlaying(false));
-      startVisualizer(audio);
-    } else {
-      audio.pause();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, isUsingRealTracks]);
-
-  // ── Visualizer ───────────────────────────────────────────────────
-  function startVisualizer(audio: HTMLAudioElement) {
-    if (!analyserRef.current) {
-      try {
-        const ctx = audioCtxRef.current ?? new AudioContext();
-        audioCtxRef.current = ctx;
-        if (!sourceRef.current) {
-          sourceRef.current = ctx.createMediaElementSource(audio);
-        }
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 128;
-        sourceRef.current.connect(analyser);
-        analyser.connect(ctx.destination);
-        analyserRef.current = analyser;
-      } catch {
-        // Web Audio unavailable — visuals degraded
-      }
-    }
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    const draw = () => {
-      if (!analyserRef.current) return;
-      const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-      analyserRef.current.getByteFrequencyData(data);
-      const bars = Array.from({ length: 32 }, (_, i) => {
-        const idx = Math.floor((i / 32) * data.length);
-        return data[idx] / 255;
-      });
-      setFreqBars(bars);
-      rafRef.current = requestAnimationFrame(draw);
-    };
-    rafRef.current = requestAnimationFrame(draw);
-  }
-
-  function stopVisualizer() {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    setFreqBars(Array(32).fill(0));
-  }
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
-  useEffect(() => {
-    if (!isPlaying) stopVisualizer();
-  }, [isPlaying]);
-
-  // ── File loading ──────────────────────────────────────────────────
-  function loadFiles(files: FileList | File[]) {
-    const arr = Array.from(files).filter((f) => f.type.startsWith("audio/"));
-    if (!arr.length) return;
-    const newTracks = arr.map((f) => {
-      const url = URL.createObjectURL(f);
-      objectUrlsRef.current.push(url);
-      const kb = f.size / 1024;
-      const size =
-        kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
-      return { name: f.name.replace(/\.[^.]+$/, ""), url, size };
-    });
-    setUserTracks((prev) => {
-      const combined = [...prev, ...newTracks];
-      return combined;
-    });
-    setTrackIdx(userTracks.length); // jump to first new track
-    setIsPlaying(false);
-  }
-
-  // ── Controls ──────────────────────────────────────────────────────
-  const handlePrev = useCallback(() => {
-    if (!isUsingRealTracks) return;
-    const audio = audioRef.current;
-    if (audio && audio.currentTime > 3) {
-      audio.currentTime = 0;
-      return;
-    }
-    setTrackIdx((i) => (i - 1 + userTracks.length) % userTracks.length);
-    setIsPlaying(false);
-  }, [isUsingRealTracks, userTracks.length]);
-
-  const handleNext = useCallback(() => {
-    if (!isUsingRealTracks) return;
-    if (shuffle) {
-      let next = trackIdx;
-      while (next === trackIdx && userTracks.length > 1)
-        next = Math.floor(Math.random() * userTracks.length);
-      setTrackIdx(next);
-    } else {
-      setTrackIdx((i) => (i + 1) % userTracks.length);
-    }
-    setIsPlaying(false);
-  }, [isUsingRealTracks, shuffle, trackIdx, userTracks.length]);
-
-  const handleSeek = useCallback(
-    (pct: number) => {
-      const audio = audioRef.current;
-      if (!audio || !duration) return;
-      audio.currentTime = (pct / 100) * duration;
-      setCurrentTime(audio.currentTime);
-    },
-    [duration],
-  );
-
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  // ── Demo track state (fake progress when no real tracks) ──────────
-  const [demoIdx, setDemoIdx] = useState(0);
-  const [demoPlaying, setDemoPlaying] = useState(false);
-  const [demoProgress, setDemoProgress] = useState(0);
-  const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const demoTrack = TRACKS[demoIdx];
-
-  useEffect(() => {
-    if (demoPlaying && !isUsingRealTracks) {
-      demoIntervalRef.current = setInterval(() => {
-        setDemoProgress((prev) => {
-          if (prev >= 100) {
-            setDemoPlaying(false);
-            return 0;
-          }
-          return prev + 100 / demoTrack.totalSec;
-        });
-      }, 1000);
-    } else {
-      if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
-    }
-    return () => {
-      if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
-    };
-  }, [demoPlaying, demoTrack.totalSec, isUsingRealTracks]);
-
-  // Fake visualizer for demo mode
-  const demoFakeVizRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    if (demoPlaying && !isUsingRealTracks) {
-      demoFakeVizRef.current = setInterval(() => {
-        setFreqBars(
-          Array.from({ length: 32 }, (_, i) => {
-            const bass = i < 6 ? 0.5 + Math.random() * 0.5 : 0;
-            const mid = i >= 6 && i < 20 ? 0.2 + Math.random() * 0.6 : 0;
-            const hi = i >= 20 ? Math.random() * 0.4 : 0;
-            return bass + mid + hi;
-          }),
-        );
-      }, 80);
-    } else if (!isPlaying) {
-      if (demoFakeVizRef.current) clearInterval(demoFakeVizRef.current);
-      setFreqBars(Array(32).fill(0));
-    }
-    return () => {
-      if (demoFakeVizRef.current) clearInterval(demoFakeVizRef.current);
-    };
-  }, [demoPlaying, isUsingRealTracks, isPlaying]);
-
-  const displayTrackName = isUsingRealTracks
-    ? (currentTrack?.name ?? "Unknown")
-    : demoTrack.title;
-  const displayArtist = isUsingRealTracks ? "Local File" : demoTrack.artist;
-  const displayProgress = isUsingRealTracks ? progress : demoProgress;
-  const displayElapsed = isUsingRealTracks
-    ? currentTime
-    : Math.floor((demoProgress / 100) * demoTrack.totalSec);
-  const displayDuration = isUsingRealTracks
-    ? duration > 0
-      ? duration
-      : null
-    : demoTrack.totalSec;
-  const displayPlaying = isUsingRealTracks ? isPlaying : demoPlaying;
-
-  return (
-    <section
-      className="eng-panel rounded-2xl p-5 flex flex-col gap-5"
-      data-ocid="player.section"
-    >
-      {/* Drop zone */}
-      <div
-        data-ocid="player.dropzone"
-        className="relative rounded-xl flex flex-col items-center justify-center py-6 px-4 transition-all duration-200 cursor-pointer"
-        style={{
-          border: `2px dashed ${isDragOver ? "oklch(0.78 0.18 192)" : "oklch(0.28 0.04 220)"}`,
-          background: isDragOver
-            ? "oklch(0.78 0.18 192 / 0.07)"
-            : "oklch(0.10 0.016 265)",
-          boxShadow: isDragOver
-            ? "0 0 20px oklch(0.78 0.18 192 / 0.2)"
-            : "none",
-        }}
-        onClick={() => fileInputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragOver(true);
-        }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setIsDragOver(false);
-          loadFiles(e.dataTransfer.files);
-        }}
-        aria-label="Drop audio files or click to browse"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
-        }}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*"
-          multiple
-          className="sr-only"
-          data-ocid="player.upload_button"
-          aria-label="Load audio files"
-          onChange={(e) => {
-            if (e.target.files) loadFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        <div className="flex flex-col items-center gap-2 pointer-events-none">
-          <motion.div
-            animate={{ y: isDragOver ? -4 : 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          >
-            <LucideUploadCloud
-              size={32}
-              style={{
-                color: isDragOver
-                  ? "oklch(0.78 0.18 192)"
-                  : "oklch(0.40 0.04 220)",
-              }}
-            />
-          </motion.div>
-          <p
-            className="text-sm font-bold tracking-wider text-center"
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              color: isDragOver
-                ? "oklch(0.84 0.18 192)"
-                : "oklch(0.50 0.04 220)",
-            }}
-          >
-            DROP YOUR TRACKS HERE
-          </p>
-          <p
-            className="text-xs text-center"
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              color: "oklch(0.35 0.04 220)",
-            }}
-          >
-            or click to browse · MP3, WAV, FLAC, AAC supported
-          </p>
-          {isUsingRealTracks && (
-            <p
-              className="text-xs font-bold"
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                color: "oklch(0.72 0.22 145)",
-              }}
-            >
-              {userTracks.length} TRACK{userTracks.length !== 1 ? "S" : ""}{" "}
-              LOADED · ADD MORE
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Main player */}
-      <div className="flex gap-5 items-start">
-        {/* Album art / waveform display */}
-        <div className="flex-shrink-0 flex flex-col gap-3">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={isUsingRealTracks ? trackIdx : demoIdx}
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              transition={{ duration: 0.3 }}
-              className="relative rounded-xl overflow-hidden flex-shrink-0"
-              style={{ width: 100, height: 100 }}
-            >
-              {isUsingRealTracks ? (
-                <div
-                  className="w-full h-full flex items-center justify-center rounded-xl"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, oklch(0.14 0.04 265), oklch(0.10 0.02 265))",
-                    border: "1px solid oklch(0.22 0.028 265)",
-                    boxShadow: displayPlaying
-                      ? "0 0 20px oklch(0.78 0.18 192 / 0.4)"
-                      : "none",
-                    transition: "box-shadow 0.4s",
-                  }}
-                >
-                  <LucideMusic
-                    size={32}
-                    style={{ color: "oklch(0.78 0.18 192)" }}
-                  />
-                </div>
-              ) : (
-                <img
-                  src={demoTrack.art}
-                  alt={demoTrack.title}
-                  className="w-full h-full object-cover rounded-xl"
-                  style={{
-                    boxShadow: displayPlaying
-                      ? "0 0 20px oklch(0.78 0.18 192 / 0.4)"
-                      : "none",
-                    transition: "box-shadow 0.4s",
-                  }}
-                />
-              )}
-              {displayPlaying && (
-                <motion.div
-                  className="absolute inset-0 rounded-xl"
-                  style={{ border: "2px solid oklch(0.78 0.18 192 / 0.6)" }}
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ repeat: Number.POSITIVE_INFINITY, duration: 2 }}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Controls */}
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
-          {/* Track info */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${isUsingRealTracks}-${isUsingRealTracks ? trackIdx : demoIdx}`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
-            >
-              <p
-                className="font-bold text-base leading-tight truncate"
-                style={{
-                  fontFamily: "'Bricolage Grotesque', sans-serif",
-                  color: "oklch(0.94 0.02 200)",
-                }}
-              >
-                {displayTrackName}
-              </p>
-              <p
-                className="text-xs"
-                style={{
-                  color: isUsingRealTracks
-                    ? "oklch(0.55 0.12 192)"
-                    : "oklch(0.55 0.04 220)",
-                }}
-              >
-                {displayArtist}
-                {!isUsingRealTracks && (
-                  <span
-                    className="ml-2 px-1.5 py-0.5 rounded text-xs"
-                    style={{
-                      background: "oklch(0.85 0.22 70 / 0.12)",
-                      color: "oklch(0.85 0.22 70)",
-                      border: "1px solid oklch(0.85 0.22 70 / 0.3)",
-                      fontSize: 9,
-                    }}
-                  >
-                    DEMO
-                  </span>
-                )}
-              </p>
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Seek bar */}
-          <div className="flex items-center gap-2">
-            <span
-              className="tabular-nums"
-              style={{
-                fontSize: 10,
-                fontFamily: "'JetBrains Mono', monospace",
-                color: "oklch(0.50 0.04 220)",
-                minWidth: 30,
-              }}
-            >
-              {formatTime(Math.floor(displayElapsed))}
-            </span>
-            <div
-              className="flex-1 relative rounded-full overflow-hidden cursor-pointer"
-              style={{ height: 5, background: "oklch(0.18 0.025 265)" }}
-              role="slider"
-              tabIndex={0}
-              aria-valuenow={displayProgress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Seek"
-              data-ocid="player.input"
-              onClick={(e) => {
-                if (!isUsingRealTracks) return;
-                const rect = e.currentTarget.getBoundingClientRect();
-                handleSeek(((e.clientX - rect.left) / rect.width) * 100);
-              }}
-              onKeyDown={(e) => {
-                if (!isUsingRealTracks) return;
-                if (e.key === "ArrowRight")
-                  handleSeek(Math.min(100, displayProgress + 2));
-                if (e.key === "ArrowLeft")
-                  handleSeek(Math.max(0, displayProgress - 2));
-              }}
-            >
-              <motion.div
-                className="absolute left-0 top-0 bottom-0 rounded-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, oklch(0.72 0.18 192), oklch(0.84 0.18 192))",
-                  boxShadow: "0 0 8px oklch(0.78 0.18 192 / 0.6)",
-                }}
-                animate={{ width: `${displayProgress}%` }}
-                transition={{ duration: 0.15, ease: "linear" }}
-              />
-            </div>
-            <span
-              className="tabular-nums"
-              style={{
-                fontSize: 10,
-                fontFamily: "'JetBrains Mono', monospace",
-                color: "oklch(0.40 0.03 220)",
-                minWidth: 30,
-                textAlign: "right",
-              }}
-            >
-              {displayDuration
-                ? formatTime(Math.floor(displayDuration))
-                : "--:--"}
-            </span>
-          </div>
-
-          {/* Transport controls */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              data-ocid="player.toggle"
-              onClick={() => setShuffle((s) => !s)}
-              className="player-ctrl-btn"
-              style={{
-                color: shuffle
-                  ? "oklch(0.78 0.18 192)"
-                  : "oklch(0.40 0.03 220)",
-              }}
-              aria-label="Shuffle"
-            >
-              <LucideShuffle size={15} />
-            </button>
-            <button
-              type="button"
-              data-ocid="player.secondary_button"
-              onClick={() => {
-                if (isUsingRealTracks) handlePrev();
-                else setDemoIdx((i) => (i - 1 + TRACKS.length) % TRACKS.length);
-              }}
-              className="player-ctrl-btn"
-              aria-label="Previous track"
-            >
-              <LucideChevronFirst size={18} />
-            </button>
-            <motion.button
-              data-ocid="player.primary_button"
-              onClick={() => {
-                if (isUsingRealTracks) {
-                  setIsPlaying((p) => !p);
-                } else {
-                  setDemoPlaying((p) => !p);
-                }
-              }}
-              className="play-btn"
-              style={{ width: 44, height: 44 }}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.94 }}
-              aria-label={displayPlaying ? "Pause" : "Play"}
-            >
-              <AnimatePresence mode="wait">
-                {displayPlaying ? (
-                  <motion.span
-                    key="pause"
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.7, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <LucidePause size={18} fill="currentColor" />
-                  </motion.span>
-                ) : (
-                  <motion.span
-                    key="play"
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.7, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <LucidePlay
-                      size={18}
-                      fill="currentColor"
-                      style={{ marginLeft: 2 }}
-                    />
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
-            <button
-              type="button"
-              data-ocid="player.button"
-              onClick={() => {
-                if (isUsingRealTracks) handleNext();
-                else setDemoIdx((i) => (i + 1) % TRACKS.length);
-              }}
-              className="player-ctrl-btn"
-              aria-label="Next track"
-            >
-              <LucideChevronLast size={18} />
-            </button>
-            <button
-              type="button"
-              data-ocid="player.toggle"
-              onClick={() => setRepeat((r) => !r)}
-              className="player-ctrl-btn"
-              style={{
-                color: repeat ? "oklch(0.78 0.18 192)" : "oklch(0.40 0.03 220)",
-              }}
-              aria-label="Repeat"
-            >
-              <LucideRepeat size={15} />
-            </button>
-            {/* Volume */}
-            <div
-              className="flex items-center gap-1.5 ml-auto"
-              style={{ maxWidth: 140 }}
-            >
-              <LucideVolume2
-                size={13}
-                style={{ color: "oklch(0.45 0.04 220)", flexShrink: 0 }}
-              />
-              <div className="flex-1 relative" style={{ height: 4 }}>
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: "oklch(0.18 0.025 265)" }}
-                />
-                <div
-                  className="absolute left-0 top-0 bottom-0 rounded-full"
-                  style={{
-                    width: `${volume * 100}%`,
-                    background:
-                      "linear-gradient(90deg, oklch(0.65 0.15 192), oklch(0.78 0.18 192))",
-                  }}
-                />
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
-                  className="volume-slider"
-                  aria-label="Volume"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Waveform visualizer */}
-      <div
-        className="flex items-end justify-center gap-0.5 rounded-xl px-3 py-3"
-        style={{
-          height: 72,
-          background: "oklch(0.09 0.015 265)",
-          border: "1px solid oklch(0.16 0.022 265)",
-        }}
-      >
-        {freqBars.map((v, i) => (
-          <motion.div
-            key={String(i)}
-            className="flex-1 rounded-sm"
-            style={{
-              minWidth: 4,
-              background:
-                v > 0.7
-                  ? "oklch(0.85 0.22 70)"
-                  : v > 0.4
-                    ? "oklch(0.78 0.18 192)"
-                    : "oklch(0.55 0.14 192 / 0.8)",
-              boxShadow:
-                v > 0.5
-                  ? `0 0 ${Math.round(v * 8)}px oklch(0.78 0.18 192 / 0.6)`
-                  : "none",
-            }}
-            animate={{ height: `${Math.max(4, v * 100)}%` }}
-            transition={{ duration: 0.08, ease: "linear" }}
-          />
-        ))}
-      </div>
-
-      {/* Track queue */}
-      {isUsingRealTracks && (
-        <div
-          className="flex flex-col gap-1"
-          style={{ maxHeight: 200, overflowY: "auto" }}
-        >
-          <p
-            className="text-xs font-semibold tracking-widest uppercase mb-1"
-            style={{
-              color: "oklch(0.38 0.03 220)",
-              fontFamily: "'Bricolage Grotesque', sans-serif",
-            }}
-          >
-            QUEUE — {userTracks.length} TRACKS
-          </p>
-          {userTracks.map((t, i) => (
-            <button
-              type="button"
-              key={`${t.name}-${i}`}
-              data-ocid={`player.item.${i + 1}`}
-              onClick={() => {
-                setTrackIdx(i);
-                setIsPlaying(false);
-              }}
-              className="flex items-center gap-3 text-left px-3 py-2 rounded-lg transition-all duration-150"
-              style={{
-                background:
-                  i === trackIdx
-                    ? "oklch(0.78 0.18 192 / 0.10)"
-                    : "transparent",
-                border:
-                  i === trackIdx
-                    ? "1px solid oklch(0.78 0.18 192 / 0.3)"
-                    : "1px solid transparent",
-              }}
-            >
-              <span
-                className="tabular-nums text-xs flex-shrink-0"
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color:
-                    i === trackIdx
-                      ? "oklch(0.78 0.18 192)"
-                      : "oklch(0.35 0.03 220)",
-                  minWidth: 20,
-                }}
-              >
-                {i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm leading-tight truncate"
-                  style={{
-                    fontFamily: "'Bricolage Grotesque', sans-serif",
-                    color:
-                      i === trackIdx
-                        ? "oklch(0.84 0.18 192)"
-                        : "oklch(0.70 0.03 220)",
-                    fontWeight: i === trackIdx ? 600 : 400,
-                  }}
-                >
-                  {t.name}
-                </p>
-              </div>
-              <span
-                className="text-xs flex-shrink-0"
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: "oklch(0.38 0.04 220)",
-                }}
-              >
-                {t.size}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Demo tracks when no real files */}
-      {!isUsingRealTracks && (
-        <div className="flex flex-col gap-1">
-          <p
-            className="text-xs font-semibold tracking-widest uppercase mb-1"
-            style={{
-              color: "oklch(0.38 0.03 220)",
-              fontFamily: "'Bricolage Grotesque', sans-serif",
-            }}
-          >
-            DEMO QUEUE · LOAD YOUR OWN MUSIC ABOVE
-          </p>
-          {TRACKS.map((t, i) => (
-            <button
-              type="button"
-              key={t.title}
-              data-ocid={`player.item.${i + 1}`}
-              onClick={() => {
-                setDemoIdx(i);
-                setDemoProgress(0);
-                setDemoPlaying(false);
-              }}
-              className="flex items-center gap-3 text-left px-3 py-2 rounded-lg transition-all duration-150"
-              style={{
-                background:
-                  i === demoIdx ? "oklch(0.78 0.18 192 / 0.08)" : "transparent",
-                border:
-                  i === demoIdx
-                    ? "1px solid oklch(0.78 0.18 192 / 0.2)"
-                    : "1px solid transparent",
-              }}
-            >
-              <span
-                className="tabular-nums text-xs flex-shrink-0"
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color:
-                    i === demoIdx
-                      ? "oklch(0.78 0.18 192)"
-                      : "oklch(0.35 0.03 220)",
-                  minWidth: 20,
-                }}
-              >
-                {i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm leading-tight truncate"
-                  style={{
-                    fontFamily: "'Bricolage Grotesque', sans-serif",
-                    color:
-                      i === demoIdx
-                        ? "oklch(0.82 0.18 192)"
-                        : "oklch(0.70 0.03 220)",
-                    fontWeight: i === demoIdx ? 600 : 400,
-                  }}
-                >
-                  {t.title}
-                </p>
-                <p style={{ fontSize: 10, color: "oklch(0.42 0.03 220)" }}>
-                  {t.artist} · {t.duration}
-                </p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+interface BlockchainEntry {
+  hash: string;
+  timestamp: number;
+  action: string;
+  value: string;
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <span className="eng-label">{children}</span>
-      <div
-        className="flex-1 h-px"
-        style={{ background: "oklch(0.22 0.025 265)" }}
-      />
-    </div>
-  );
+// ─── EQ Band Frequencies ────────────────────────────────────────────────────
+const EQ_BANDS = [
+  { freq: 60, label: "60Hz" },
+  { freq: 170, label: "170Hz" },
+  { freq: 310, label: "310Hz" },
+  { freq: 600, label: "600Hz" },
+  { freq: 1000, label: "1kHz" },
+  { freq: 3000, label: "3kHz" },
+  { freq: 6000, label: "6kHz" },
+  { freq: 12000, label: "12kHz" },
+  { freq: 14000, label: "14kHz" },
+  { freq: 16000, label: "16kHz" },
+];
+
+// ─── EQ Presets ─────────────────────────────────────────────────────────────
+const EQ_PRESETS: Record<string, number[]> = {
+  Flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "Bass Boost": [8, 6, 4, 2, 0, 0, 0, 0, 0, 0],
+  Rock: [5, 4, 2, 0, -1, 1, 3, 4, 4, 3],
+  Pop: [-1, 2, 4, 4, 2, 0, -1, -1, -1, -1],
+  Jazz: [3, 2, 0, 2, -2, -2, 0, 1, 2, 3],
+  Classical: [4, 3, 2, 0, -2, -2, 0, 2, 3, 4],
+  Electronic: [6, 5, 1, 0, -2, 2, 1, 3, 4, 5],
+  Vocal: [-2, -1, 0, 3, 5, 5, 3, 1, 0, -1],
+};
+
+// ─── Utility: generate fake blockchain hash ─────────────────────────────────
+function makeHash(): string {
+  return Array.from({ length: 16 }, () =>
+    Math.floor(Math.random() * 16).toString(16),
+  ).join("");
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
-export default function App() {
-  // Book intro
-  const [bookOpen, setBookOpen] = useState(true);
-
-  // SRS-22
-  const [srsVols, setSrsVols] = useState([750, 750, 750]);
-  const srsActive = srsVols.every((v) => v > 500);
-
-  // Engines
-  const [engineOn, setEngineOn] = useState([true, true, true, true]);
-  const [engineAmp, setEngineAmp] = useState([100, 100, 100, 100]);
-  const allEnginesOn = engineOn.every(Boolean);
-
-  // Computed master output (0..1)
-  const masterOutput = useMemo(() => {
-    const activeAmps = engineAmp.map((a, i) => (engineOn[i] ? a : 0));
-    const avgAmp = activeAmps.reduce((s, v) => s + v, 0) / 4;
-    const srsAvg = srsVols.reduce((s, v) => s + v, 0) / 3;
-    return (avgAmp / 120) * (srsAvg / 1500);
-  }, [engineAmp, engineOn, srsVols]);
-
-  // EQ gains
-  const [baseGains, setBaseGains] = useState<number[]>([...FLAT_30]);
-  const [activePreset, setActivePreset] = useState<string>("Flat");
-  // DJ switches
-  const [djActive, setDjActive] = useState<boolean[]>(Array(8).fill(false));
-
-  // Effective gains = base + DJ effects
-  const effectiveGains = useMemo(() => {
-    const result = [...baseGains];
-    DJ_SWITCH_NAMES.forEach((name, si) => {
-      if (djActive[si]) {
-        const fx = DJ_EFFECTS[name];
-        for (let b = 0; b < 30; b++) {
-          result[b] = Math.max(-12, Math.min(12, result[b] + fx[b]));
-        }
-      }
-    });
-    return result;
-  }, [baseGains, djActive]);
-
-  const handleBandChange = useCallback((index: number, value: number) => {
-    setBaseGains((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-    setActivePreset("Custom");
-  }, []);
-
-  const applyPreset = useCallback((name: string) => {
-    setBaseGains([...PRESETS_30[name]]);
-    setActivePreset(name);
-  }, []);
-
-  // Stabilizer
-  const [stabilizerPos, setStabilizerPos] = useState(0); // -100 to +100
-  const stabilierDragRef = useRef(false);
-  const stabilierStartX = useRef(0);
-  const stabilierStartVal = useRef(0);
-
-  // Subtly react to master output
-  useEffect(() => {
-    const offset = (masterOutput - 0.5) * 40;
-    setStabilizerPos((prev) => {
-      const target = Math.max(-100, Math.min(100, prev * 0.9 + offset * 0.1));
-      return Math.round(target * 10) / 10;
-    });
-  }, [masterOutput]);
-
-  const harmonicPct = Math.round(100 - Math.abs(stabilizerPos) * 0.3);
-  const zeroCentered = Math.abs(stabilizerPos) <= 5;
-
-  // Monitor
-  const [harmonicCorrection, setHarmonicCorrection] = useState(85);
-  const [vuInput, setVuInput] = useState(60);
-  const [vuOutput, setVuOutput] = useState(55);
+// ─── BookIntro ───────────────────────────────────────────────────────────────
+function BookIntro({ onClose }: { onClose: () => void }) {
+  const [opening, setOpening] = useState(false);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const base = masterOutput * 80;
-      setVuInput(Math.min(100, base + (Math.random() - 0.5) * 20));
-      setVuOutput(
-        Math.min(
-          100,
-          base * (harmonicCorrection / 100) * (1 + masterOutput * 0.2) +
-            (Math.random() - 0.5) * 15,
-        ),
-      );
-    }, 200);
-    return () => clearInterval(id);
-  }, [masterOutput, harmonicCorrection]);
-
-  // Room Magnet
-  const [roomSize, setRoomSize] = useState(25);
-  const magnetStrength = Math.round((roomSize / 50) * 80000);
-
-  // Blockchain
-  const [blockHash, setBlockHash] = useState("0x4a7f2c8d9e1b3a5c");
-  useEffect(() => {
-    const id = setInterval(() => {
-      setBlockHash(`0x${Math.random().toString(16).slice(2, 18)}`);
-    }, 5000);
-    return () => clearInterval(id);
+    const t = setTimeout(() => setOpening(true), 300);
+    return () => clearTimeout(t);
   }, []);
-
-  const moduleStates = {
-    "SRS-22": srsActive,
-    "Engine 1": engineOn[0],
-    "Engine 2": engineOn[1],
-    "Engine 3": engineOn[2],
-    "Engine 4": engineOn[3],
-    EQ: activePreset !== "Custom",
-    Stabilizer: zeroCentered,
-    Monitor: harmonicCorrection > 80,
-    Room: roomSize > 10,
-  };
-  const moduleNames = Object.keys(moduleStates);
-
-  const currentYear = new Date().getFullYear();
-
-  // Stabilizer drag handlers
-  const handleStabDragStart = (clientX: number) => {
-    stabilierDragRef.current = true;
-    stabilierStartX.current = clientX;
-    stabilierStartVal.current = stabilizerPos;
-  };
-  const handleStabDragMove = useCallback((clientX: number) => {
-    if (!stabilierDragRef.current) return;
-    const delta = clientX - stabilierStartX.current;
-    const newVal = Math.max(
-      -100,
-      Math.min(100, stabilierStartVal.current + delta * 0.8),
-    );
-    setStabilizerPos(Math.round(newVal * 10) / 10);
-  }, []);
-  const handleStabDragEnd = useCallback(() => {
-    stabilierDragRef.current = false;
-  }, []);
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => handleStabDragMove(e.clientX);
-    const onTouch = (e: TouchEvent) => handleStabDragMove(e.touches[0].clientX);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", handleStabDragEnd);
-    window.addEventListener("touchmove", onTouch);
-    window.addEventListener("touchend", handleStabDragEnd);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", handleStabDragEnd);
-      window.removeEventListener("touchmove", onTouch);
-      window.removeEventListener("touchend", handleStabDragEnd);
-    };
-  }, [handleStabDragMove, handleStabDragEnd]);
-
-  // Stabilizer SVG arc math
-  const stabAngle = (stabilizerPos / 100) * 135; // ±135°
-  const cx = 120;
-  const cy = 120;
-  const r = 90;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const arcStart = -135; // degrees from 12 o'clock
-  const arcEnd = 135;
-  const pointerAngle = 90 + stabAngle; // SVG coords: 0° = right
-  const px =
-    cx + r * Math.cos(toRad(arcStart + ((stabAngle + 135) / 270) * 270));
-  const py =
-    cy + r * Math.sin(toRad(arcStart + ((stabAngle + 135) / 270) * 270));
-  const arcX1 = cx + r * Math.cos(toRad(arcStart));
-  const arcY1 = cy + r * Math.sin(toRad(arcStart));
-  const arcX2 = cx + r * Math.cos(toRad(arcEnd));
-  const arcY2 = cy + r * Math.sin(toRad(arcEnd));
-  // Needle tip
-  const needleX = cx + 80 * Math.cos(toRad(pointerAngle - 90));
-  const needleY = cy + 80 * Math.sin(toRad(pointerAngle - 90));
 
   return (
     <div
-      className="min-h-screen bg-background flex flex-col"
-      style={{ background: "oklch(0.07 0.015 265)" }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "#04080f",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        perspective: "1200px",
+      }}
     >
-      {/* ── Book Intro ── */}
-      <AnimatePresence>
-        {bookOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center"
-            data-ocid="book.intro.panel"
-            style={{ perspective: "1200px" }}
-          >
-            {/* Left page */}
-            <motion.div
-              className="absolute inset-y-0 left-0 right-1/2 flex items-center justify-end pr-8"
-              style={{
-                background:
-                  "linear-gradient(135deg, oklch(0.08 0.02 265), oklch(0.12 0.025 265))",
-                transformOrigin: "right center",
-                zIndex: 2,
-                borderRight: "2px solid oklch(0.85 0.22 70 / 0.4)",
-              }}
-              initial={{ rotateY: 0 }}
-              animate={{ rotateY: -100 }}
-              transition={{ delay: 0.3, duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
-            >
-              <div
-                className="text-right select-none"
-                style={{ userSelect: "none" }}
-              >
-                <div
-                  className="text-8xl font-black tracking-tighter"
-                  style={{
-                    fontFamily: "'Bricolage Grotesque', sans-serif",
-                    color: "oklch(0.85 0.22 70)",
-                    textShadow: "0 0 40px oklch(0.85 0.22 70 / 0.5)",
-                  }}
-                >
-                  GERROD
-                </div>
-                <div
-                  className="text-2xl tracking-widest mt-2"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.65 0.05 220)",
-                  }}
-                >
-                  ENGINEER | PRODUCT 2
-                </div>
-                <div
-                  className="text-5xl font-black mt-4"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.85 0.22 70)",
-                    textShadow: "0 0 30px oklch(0.85 0.22 70 / 0.6)",
-                  }}
-                >
-                  80,000W
-                </div>
-              </div>
-            </motion.div>
-            {/* Right page */}
-            <motion.div
-              className="absolute inset-y-0 left-1/2 right-0"
-              style={{
-                background:
-                  "linear-gradient(225deg, oklch(0.08 0.02 265), oklch(0.12 0.025 265))",
-                transformOrigin: "left center",
-                zIndex: 2,
-                borderLeft: "2px solid oklch(0.85 0.22 70 / 0.4)",
-              }}
-              initial={{ rotateY: 0 }}
-              animate={{ rotateY: 100 }}
-              transition={{ delay: 0.3, duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
-            />
-            {/* Skip button */}
-            <motion.button
-              type="button"
-              data-ocid="book.intro.button"
-              className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm z-10"
-              style={{
-                background: "oklch(0.78 0.18 192 / 0.15)",
-                border: "1px solid oklch(0.78 0.18 192 / 0.4)",
-                color: "oklch(0.78 0.18 192)",
-                fontFamily: "'JetBrains Mono', monospace",
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              onClick={() => setBookOpen(false)}
-            >
-              SKIP INTRO
-            </motion.button>
-            {/* Auto-dismiss */}
-            {setTimeout(() => setBookOpen(false), 2800) && null}
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Header ── */}
-      <header
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-6 py-4 border-b gap-2"
+      {/* Left page */}
+      <div
+        className={opening ? "book-page-left" : ""}
         style={{
-          borderColor: "oklch(0.18 0.025 265)",
-          background: "oklch(0.08 0.016 265)",
+          width: "40vw",
+          maxWidth: 420,
+          height: "60vh",
+          maxHeight: 520,
+          background: "linear-gradient(160deg, #0d1f3c 0%, #071122 100%)",
+          border: "2px solid rgba(255,215,0,0.4)",
+          borderRight: "1px solid rgba(255,215,0,0.2)",
+          borderRadius: "4px 0 0 4px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transformOrigin: "right center",
+          boxShadow:
+            "inset -8px 0 24px rgba(0,0,0,0.5), 0 0 40px rgba(255,215,0,0.1)",
+          position: "relative",
         }}
       >
-        <div>
-          <h1
-            className="text-2xl font-black tracking-widest uppercase"
+        <div style={{ textAlign: "center", padding: 32 }}>
+          <div
             style={{
-              fontFamily: "'Bricolage Grotesque', sans-serif",
-              color: "oklch(0.92 0.03 200)",
+              color: "rgba(255,215,0,0.3)",
+              fontSize: "0.6rem",
+              letterSpacing: "0.2em",
+              marginBottom: 12,
+              fontFamily: "JetBrains Mono, monospace",
             }}
           >
-            <span style={{ color: "oklch(0.85 0.22 70)" }}>GERROD</span>
-            <span style={{ color: "oklch(0.35 0.04 220)" }}> | </span>
-            <span>ENGINEER</span>
-            <span style={{ color: "oklch(0.35 0.04 220)" }}> | </span>
-            <span style={{ color: "oklch(0.78 0.18 192)" }}>PRODUCT 2</span>
-          </h1>
-          <p
-            className="text-xs tracking-widest mt-0.5"
+            PRODUCT SERIES II
+          </div>
+          <div
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              color: "oklch(0.45 0.04 220)",
+              width: 60,
+              height: 1,
+              background: "rgba(255,215,0,0.3)",
+              margin: "0 auto 20px",
+            }}
+          />
+          <div
+            style={{
+              color: "rgba(255,215,0,0.15)",
+              fontSize: "3rem",
+              fontWeight: 800,
+              lineHeight: 1,
             }}
           >
-            80,000 WATTS · 4 SOUND ENGINES · SRS-22 SMART CHIP
-          </p>
+            G
+          </div>
         </div>
+        {/* spine shadow */}
         <div
-          className="flex items-center gap-2 px-4 py-2 rounded-full"
           style={{
-            background: "oklch(0.12 0.02 160 / 0.8)",
-            border: "1px solid oklch(0.6 0.18 160 / 0.4)",
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 8,
+            background: "rgba(0,0,0,0.4)",
+          }}
+        />
+      </div>
+
+      {/* Center content (revealed) */}
+      <div
+        style={{
+          position: "absolute",
+          textAlign: "center",
+          zIndex: -1,
+          opacity: opening ? 1 : 0,
+          transition: "opacity 0.8s ease 0.8s",
+        }}
+      >
+        <div
+          style={{
+            color: "rgba(255,215,0,0.5)",
+            fontSize: "0.55rem",
+            letterSpacing: "0.3em",
+            marginBottom: 16,
+            fontFamily: "JetBrains Mono, monospace",
           }}
         >
-          <motion.div
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ background: "oklch(0.72 0.22 145)" }}
-            animate={{
-              opacity: [1, 0.3, 1],
-              boxShadow: [
-                "0 0 6px oklch(0.72 0.22 145)",
-                "0 0 12px oklch(0.82 0.22 145)",
-                "0 0 6px oklch(0.72 0.22 145)",
-              ],
-            }}
-            transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1.4 }}
-          />
-          <span
-            className="text-xs font-bold tracking-widest"
+          EST. MMXXVI
+        </div>
+        <h1
+          style={{
+            fontFamily: "Bricolage Grotesque, sans-serif",
+            fontSize: "clamp(2rem, 5vw, 3.5rem)",
+            fontWeight: 800,
+            color: "#FFD700",
+            textShadow:
+              "0 0 40px rgba(255,215,0,0.6), 0 0 80px rgba(255,215,0,0.3)",
+            letterSpacing: "0.05em",
+            lineHeight: 1.1,
+            margin: 0,
+          }}
+        >
+          GERROD
+        </h1>
+        <div
+          style={{
+            color: "rgba(255,215,0,0.6)",
+            fontSize: "1rem",
+            letterSpacing: "0.4em",
+            margin: "8px 0",
+            fontFamily: "JetBrains Mono, monospace",
+          }}
+        >
+          ENGINEER
+        </div>
+        <div
+          style={{
+            color: "rgba(255,215,0,0.4)",
+            fontSize: "0.7rem",
+            letterSpacing: "0.3em",
+            fontFamily: "JetBrains Mono, monospace",
+          }}
+        >
+          PRODUCT 2
+        </div>
+        <div
+          style={{
+            width: 80,
+            height: 2,
+            background:
+              "linear-gradient(90deg, transparent, #FFD700, transparent)",
+            margin: "20px auto",
+          }}
+        />
+        <div
+          style={{
+            color: "rgba(255,215,0,0.5)",
+            fontSize: "0.6rem",
+            letterSpacing: "0.2em",
+            fontFamily: "JetBrains Mono, monospace",
+          }}
+        >
+          80,000W · 4 SOUND ENGINES · BLOCKCHAIN VERIFIED
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            marginTop: 32,
+            padding: "10px 32px",
+            background: "transparent",
+            border: "1px solid rgba(255,215,0,0.5)",
+            borderRadius: 4,
+            color: "#FFD700",
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: "0.65rem",
+            letterSpacing: "0.2em",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            (e.target as HTMLButtonElement).style.background =
+              "rgba(255,215,0,0.1)";
+          }}
+          onMouseLeave={(e) => {
+            (e.target as HTMLButtonElement).style.background = "transparent";
+          }}
+        >
+          INITIALIZE SYSTEM
+        </button>
+      </div>
+
+      {/* Right page */}
+      <div
+        className={opening ? "book-page-right" : ""}
+        style={{
+          width: "40vw",
+          maxWidth: 420,
+          height: "60vh",
+          maxHeight: 520,
+          background: "linear-gradient(160deg, #071122 0%, #0d1f3c 100%)",
+          border: "2px solid rgba(255,215,0,0.4)",
+          borderLeft: "1px solid rgba(255,215,0,0.2)",
+          borderRadius: "0 4px 4px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transformOrigin: "left center",
+          boxShadow:
+            "inset 8px 0 24px rgba(0,0,0,0.5), 0 0 40px rgba(255,215,0,0.1)",
+          position: "relative",
+        }}
+      >
+        <div style={{ textAlign: "center", padding: 32 }}>
+          <div
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              color: "oklch(0.78 0.18 145)",
+              color: "rgba(255,215,0,0.15)",
+              fontSize: "3rem",
+              fontWeight: 800,
             }}
           >
-            CHAIN VERIFIED
-          </span>
+            2
+          </div>
+          <div
+            style={{
+              width: 60,
+              height: 1,
+              background: "rgba(255,215,0,0.3)",
+              margin: "20px auto 12px",
+            }}
+          />
+          <div
+            style={{
+              color: "rgba(255,215,0,0.3)",
+              fontSize: "0.6rem",
+              letterSpacing: "0.2em",
+              fontFamily: "JetBrains Mono, monospace",
+            }}
+          >
+            SOUND SYSTEM
+          </div>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 8,
+            background: "rgba(0,0,0,0.4)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Battery Display ─────────────────────────────────────────────────────────
+function BatteryDisplay({ charge, label }: { charge: number; label: string }) {
+  const mah = Math.round((charge / 100) * 800000);
+  const isFull = charge >= 100;
+
+  // Gradient: dark blue at bottom → gold at top
+  const fillColor =
+    charge < 30
+      ? "linear-gradient(to top, #0a1f4a, #1a3a7a)"
+      : charge < 70
+        ? "linear-gradient(to top, #0a1f4a, #2255aa, #886600)"
+        : "linear-gradient(to top, #0a2260, #1a4499, #cc8800, #FFD700)";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <div className="gold-label" style={{ marginBottom: 4 }}>
+        {label}
+      </div>
+
+      {/* Battery shape */}
+      <div
+        className={isFull ? "battery-full" : ""}
+        style={{
+          position: "relative",
+          width: 80,
+          height: 160,
+          background: "rgba(10,20,40,0.9)",
+          border: "2px solid rgba(255,215,0,0.4)",
+          borderRadius: 6,
+          overflow: "hidden",
+          boxShadow: isFull
+            ? "0 0 30px rgba(255,215,0,0.6), 0 0 60px rgba(255,215,0,0.3)"
+            : "0 0 10px rgba(255,215,0,0.1)",
+        }}
+      >
+        {/* Battery nub top */}
+        <div
+          style={{
+            position: "absolute",
+            top: -10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 24,
+            height: 10,
+            background: "rgba(255,215,0,0.4)",
+            borderRadius: "3px 3px 0 0",
+            border: "2px solid rgba(255,215,0,0.5)",
+            borderBottom: "none",
+            zIndex: 2,
+          }}
+        />
+
+        {/* Fill */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: `${charge}%`,
+            background: fillColor,
+            transition: "height 0.3s ease",
+          }}
+        />
+
+        {/* Segment lines */}
+        {[25, 50, 75].map((pct) => (
+          <div
+            key={pct}
+            style={{
+              position: "absolute",
+              bottom: `${pct}%`,
+              left: 0,
+              right: 0,
+              height: 1,
+              background: "rgba(255,215,0,0.15)",
+              zIndex: 1,
+            }}
+          />
+        ))}
+
+        {/* Percent text */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2,
+            fontFamily: "JetBrains Mono, monospace",
+            fontWeight: 700,
+            fontSize: "1rem",
+            color: charge > 50 ? "#FFD700" : "rgba(255,255,255,0.7)",
+            textShadow: "0 0 8px rgba(0,0,0,0.8)",
+          }}
+        >
+          {Math.round(charge)}%
+        </div>
+      </div>
+
+      {/* mAh reading */}
+      <div
+        style={{
+          fontFamily: "JetBrains Mono, monospace",
+          fontSize: "0.6rem",
+          color: "rgba(255,215,0,0.7)",
+          textAlign: "center",
+        }}
+      >
+        {mah.toLocaleString()} / 800,000 mAh
+      </div>
+
+      {isFull && (
+        <div
+          className="charging-text"
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: "0.55rem",
+            color: "#FFD700",
+            letterSpacing: "0.15em",
+            textShadow: "0 0 8px rgba(255,215,0,0.8)",
+          }}
+        >
+          ✓ FULLY CHARGED
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Rotary Knob ─────────────────────────────────────────────────────────────
+function RotaryKnob({
+  value,
+  onChange,
+  min = 0,
+  max = 100,
+  size = 48,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  size?: number;
+}) {
+  const knobRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startVal: number } | null>(null);
+
+  const pct = (value - min) / (max - min);
+  const angle = -135 + pct * 270;
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    dragRef.current = { startY: e.clientY, startVal: value };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const delta = dragRef.current.startY - ev.clientY;
+      const range = max - min;
+      const newVal = Math.max(
+        min,
+        Math.min(max, dragRef.current.startVal + (delta / 100) * range),
+      );
+      onChange(Math.round(newVal));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    e.preventDefault();
+  };
+
+  return (
+    <div
+      ref={knobRef}
+      onMouseDown={onMouseDown}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: `conic-gradient(from ${angle - 135}deg, rgba(255,215,0,0.6) 0deg, rgba(255,215,0,0.6) ${pct * 270}deg, rgba(255,255,255,0.05) ${pct * 270}deg)`,
+        border: "2px solid rgba(255,215,0,0.3)",
+        cursor: "ns-resize",
+        position: "relative",
+        boxShadow:
+          "0 0 10px rgba(255,215,0,0.2), inset 0 0 8px rgba(0,0,0,0.5)",
+        userSelect: "none",
+      }}
+    >
+      {/* Indicator dot */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: 4,
+          height: size / 2 - 6,
+          background: "#FFD700",
+          borderRadius: 2,
+          transform: `translateX(-50%) rotate(${angle}deg)`,
+          transformOrigin: "50% 100%",
+          boxShadow: "0 0 4px rgba(255,215,0,0.8)",
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
+export default function App() {
+  // ── Intro
+  const [showIntro, setShowIntro] = useState(true);
+
+  // ── Battery / Charger
+  const [charge1, setCharge1] = useState(0);
+  const [charge2, setCharge2] = useState(0);
+  const [charging, setCharging] = useState(false);
+  const chargeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const batteriesFullyCharged = charge1 >= 100 && charge2 >= 100;
+
+  // ── Tracks / Player
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [currentTrackIdx, setCurrentTrackIdx] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(80);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [masterPower, setMasterPower] = useState(true);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState(false);
+
+  // ── EQ
+  const [eqGains, setEqGains] = useState<number[]>(
+    Array(EQ_BANDS.length).fill(0),
+  );
+  const [eqPreset, setEqPreset] = useState("Flat");
+
+  // ── Engines
+  const [engines, setEngines] = useState<EngineState[]>(
+    Array.from({ length: 4 }, () => ({ on: true, gain: 75 })),
+  );
+
+  // ── Blockchain
+  const [blockchainLog, setBlockchainLog] = useState<BlockchainEntry[]>([]);
+
+  // ── Audio refs
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const filterNodesRef = useRef<BiquadFilterNode[]>([]);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+  const engineGainNodesRef = useRef<GainNode[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animFrameRef = useRef<number>(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  // ── Add blockchain log entry
+  const logBlockchain = useCallback((action: string, value: string) => {
+    setBlockchainLog((prev) => [
+      { hash: makeHash(), timestamp: Date.now(), action, value },
+      ...prev.slice(0, 19),
+    ]);
+  }, []);
+
+  // ── Init Audio Context (lazy)
+  const initAudio = useCallback(() => {
+    if (audioCtxRef.current) return audioCtxRef.current;
+    const audio = audioRef.current;
+    if (!audio) return null;
+
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
+
+    const source = ctx.createMediaElementSource(audio);
+    sourceNodeRef.current = source;
+
+    // Master gain
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = volume / 100;
+    masterGainRef.current = masterGain;
+
+    // Engine gains (4 of them, summed)
+    const engineGains = Array.from({ length: 4 }, () => ctx.createGain());
+    engineGainNodesRef.current = engineGains;
+
+    // EQ filters
+    const filters = EQ_BANDS.map((band) => {
+      const f = ctx.createBiquadFilter();
+      f.type = "peaking";
+      f.frequency.value = band.freq;
+      f.Q.value = 1.0;
+      f.gain.value = 0;
+      return f;
+    });
+    filterNodesRef.current = filters;
+
+    // Analyser
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    analyserRef.current = analyser;
+
+    // Chain: source -> filters (serial) -> masterGain -> analyser -> destination
+    let node: AudioNode = source;
+    for (const f of filters) {
+      node.connect(f);
+      node = f;
+    }
+    node.connect(masterGain);
+    masterGain.connect(analyser);
+    analyser.connect(ctx.destination);
+
+    return ctx;
+  }, [volume]);
+
+  // ── Waveform draw loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx2d = canvas.getContext("2d");
+    if (!ctx2d) return;
+
+    const draw = () => {
+      animFrameRef.current = requestAnimationFrame(draw);
+      const analyser = analyserRef.current;
+      const W = canvas.width;
+      const H = canvas.height;
+
+      ctx2d.clearRect(0, 0, W, H);
+      ctx2d.fillStyle = "rgba(5, 12, 30, 0.85)";
+      ctx2d.fillRect(0, 0, W, H);
+
+      if (!analyser || !isPlaying) {
+        // idle shimmer
+        const numBars = 64;
+        const barW = W / numBars - 1;
+        for (let i = 0; i < numBars; i++) {
+          const h = 2 + Math.random() * 4;
+          ctx2d.fillStyle = "rgba(255,215,0,0.08)";
+          ctx2d.fillRect(i * (barW + 1), H - h, barW, h);
+        }
+        return;
+      }
+
+      const bufferLen = analyser.frequencyBinCount;
+      const data = new Uint8Array(bufferLen);
+      analyser.getByteFrequencyData(data);
+
+      const barWidth = (W / bufferLen) * 2.5;
+      let x = 0;
+      for (let i = 0; i < bufferLen; i++) {
+        const v = data[i] / 255;
+        const barH = v * H;
+        const gradient = ctx2d.createLinearGradient(0, H - barH, 0, H);
+        if (v > 0.75) {
+          gradient.addColorStop(0, "#FFD700");
+          gradient.addColorStop(0.5, "#FFA500");
+          gradient.addColorStop(1, "#cc6600");
+        } else if (v > 0.4) {
+          gradient.addColorStop(0, "#88aaff");
+          gradient.addColorStop(1, "#1144aa");
+        } else {
+          gradient.addColorStop(0, "rgba(40,80,180,0.8)");
+          gradient.addColorStop(1, "rgba(10,30,80,0.4)");
+        }
+        ctx2d.fillStyle = gradient;
+        ctx2d.fillRect(x, H - barH, barWidth - 1, barH);
+        x += barWidth;
+      }
+    };
+    draw();
+    return () => cancelAnimationFrame(animFrameRef.current);
+  }, [isPlaying]);
+
+  // ── Charging logic
+  const startCharging = useCallback(() => {
+    if (charging || batteriesFullyCharged) return;
+    setCharging(true);
+    logBlockchain("CHARGE_START", "0%");
+
+    chargeIntervalRef.current = setInterval(() => {
+      setCharge1((prev) => {
+        const next = Math.min(100, prev + 100 / (6000 / 60));
+        return next;
+      });
+      setCharge2((prev) => {
+        const next = Math.min(100, prev + 100 / (6000 / 60));
+        if (next >= 100) {
+          if (chargeIntervalRef.current)
+            clearInterval(chargeIntervalRef.current);
+          setCharging(false);
+          logBlockchain("CHARGE_COMPLETE", "100%");
+        }
+        return next;
+      });
+    }, 60);
+  }, [charging, batteriesFullyCharged, logBlockchain]);
+
+  // ── Volume change
+  useEffect(() => {
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = masterPower ? volume / 100 : 0;
+    }
+    if (audioRef.current) {
+      audioRef.current.volume = masterPower ? volume / 100 : 0;
+    }
+  }, [volume, masterPower]);
+
+  // ── EQ gain change
+  const setEqBand = useCallback(
+    (idx: number, val: number) => {
+      setEqGains((prev) => {
+        const next = [...prev];
+        next[idx] = val;
+        return next;
+      });
+      if (filterNodesRef.current[idx]) {
+        filterNodesRef.current[idx].gain.value = val;
+      }
+      logBlockchain(
+        "EQ_ADJUST",
+        `${EQ_BANDS[idx].label} = ${val > 0 ? "+" : ""}${val}dB`,
+      );
+    },
+    [logBlockchain],
+  );
+
+  // ── Apply EQ preset
+  const applyPreset = useCallback(
+    (name: string) => {
+      const gains = EQ_PRESETS[name];
+      if (!gains) return;
+      setEqPreset(name);
+      setEqGains(gains);
+      gains.forEach((g, i) => {
+        if (filterNodesRef.current[i]) filterNodesRef.current[i].gain.value = g;
+      });
+      logBlockchain("EQ_PRESET", name);
+    },
+    [logBlockchain],
+  );
+
+  // ── Engine toggle
+  const toggleEngine = useCallback(
+    (idx: number) => {
+      setEngines((prev) => {
+        const next = prev.map((e, i) => (i === idx ? { ...e, on: !e.on } : e));
+        if (engineGainNodesRef.current[idx]) {
+          engineGainNodesRef.current[idx].gain.value = next[idx].on
+            ? next[idx].gain / 100
+            : 0;
+        }
+        logBlockchain(
+          "ENGINE_TOGGLE",
+          `Engine ${idx + 1} ${next[idx].on ? "ON" : "OFF"}`,
+        );
+        return next;
+      });
+    },
+    [logBlockchain],
+  );
+
+  const setEngineGain = useCallback(
+    (idx: number, val: number) => {
+      setEngines((prev) => {
+        const next = prev.map((e, i) => (i === idx ? { ...e, gain: val } : e));
+        if (engineGainNodesRef.current[idx] && next[idx].on) {
+          engineGainNodesRef.current[idx].gain.value = val / 100;
+        }
+        return next;
+      });
+      logBlockchain("ENGINE_GAIN", `Engine ${idx + 1} = ${val}%`);
+    },
+    [logBlockchain],
+  );
+
+  // ── File handling
+  const addFiles = useCallback(
+    (files: FileList | null) => {
+      if (!files) return;
+      const newTracks: Track[] = [];
+      for (const file of Array.from(files)) {
+        if (
+          !file.type.startsWith("audio/") &&
+          !file.name.match(/\.(mp3|wav|flac|ogg|m4a)$/i)
+        )
+          continue;
+        const url = URL.createObjectURL(file);
+        newTracks.push({
+          id: `${Date.now()}-${file.name}`,
+          name: file.name.replace(/\.[^.]+$/, ""),
+          url,
+        });
+      }
+      setTracks((prev) => [...prev, ...newTracks]);
+      logBlockchain("FILES_LOADED", `${newTracks.length} track(s)`);
+    },
+    [logBlockchain],
+  );
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDraggingOver(false);
+      addFiles(e.dataTransfer.files);
+    },
+    [addFiles],
+  );
+
+  // ── Playback
+  const playTrack = useCallback(
+    (idx: number) => {
+      if (!batteriesFullyCharged) return;
+      const audio = audioRef.current;
+      if (!audio || !tracks[idx]) return;
+
+      const ctx = initAudio();
+      if (ctx?.state === "suspended") ctx.resume();
+
+      if (audio.src !== tracks[idx].url) {
+        audio.src = tracks[idx].url;
+      }
+      setCurrentTrackIdx(idx);
+      audio
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
+      logBlockchain("PLAY", tracks[idx].name);
+    },
+    [batteriesFullyCharged, tracks, initAudio, logBlockchain],
+  );
+
+  const togglePlay = useCallback(() => {
+    if (!batteriesFullyCharged) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!tracks.length) return;
+
+    if (audio.paused) {
+      const ctx = initAudio();
+      if (ctx?.state === "suspended") ctx.resume();
+      audio
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
+      logBlockchain("PLAY", tracks[currentTrackIdx]?.name ?? "");
+    } else {
+      audio.pause();
+      setIsPlaying(false);
+      logBlockchain("PAUSE", "");
+    }
+  }, [
+    batteriesFullyCharged,
+    tracks,
+    currentTrackIdx,
+    initAudio,
+    logBlockchain,
+  ]);
+
+  const nextTrack = useCallback(() => {
+    if (!tracks.length) return;
+    const idx = shuffle
+      ? Math.floor(Math.random() * tracks.length)
+      : (currentTrackIdx + 1) % tracks.length;
+    playTrack(idx);
+  }, [tracks, currentTrackIdx, shuffle, playTrack]);
+
+  const prevTrack = useCallback(() => {
+    if (!tracks.length) return;
+    const idx = (currentTrackIdx - 1 + tracks.length) % tracks.length;
+    playTrack(idx);
+  }, [tracks, currentTrackIdx, playTrack]);
+
+  // ── Audio element events
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onTime = () => setCurrentTime(audio.currentTime);
+    const onDur = () => setDuration(audio.duration || 0);
+    const onEnd = () => {
+      if (repeat) {
+        audio.currentTime = 0;
+        audio.play();
+      } else nextTrack();
+    };
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("loadedmetadata", onDur);
+    audio.addEventListener("ended", onEnd);
+    return () => {
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("loadedmetadata", onDur);
+      audio.removeEventListener("ended", onEnd);
+    };
+  }, [nextTrack, repeat]);
+
+  // ── Cleanup
+  useEffect(() => {
+    return () => {
+      if (chargeIntervalRef.current) clearInterval(chargeIntervalRef.current);
+      cancelAnimationFrame(animFrameRef.current);
+    };
+  }, []);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const overallCharge = (charge1 + charge2) / 2;
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(180deg, #04080f 0%, #0a1628 30%, #071020 100%)",
+        color: "#e8e0cc",
+        fontFamily: "JetBrains Mono, monospace",
+        paddingBottom: 80,
+      }}
+    >
+      {/* Hidden audio element */}
+      <audio ref={audioRef}>
+        <track kind="captions" />
+      </audio>
+
+      {/* Book Intro */}
+      {showIntro && <BookIntro onClose={() => setShowIntro(false)} />}
+
+      {/* ── HEADER ─────────────────────────────────────────────────────── */}
+      <header
+        style={{
+          borderBottom: "1px solid rgba(255,215,0,0.2)",
+          background: "rgba(4,8,15,0.95)",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div>
+            <div
+              style={{
+                fontFamily: "Bricolage Grotesque, sans-serif",
+                fontWeight: 800,
+                fontSize: "1.4rem",
+                color: "#FFD700",
+                textShadow: "0 0 20px rgba(255,215,0,0.5)",
+                letterSpacing: "0.05em",
+                lineHeight: 1,
+              }}
+            >
+              GERROD
+            </div>
+            <div
+              style={{
+                color: "rgba(255,215,0,0.5)",
+                fontSize: "0.55rem",
+                letterSpacing: "0.3em",
+              }}
+            >
+              ENGINEER · PRODUCT 2
+            </div>
+          </div>
+          <div
+            style={{
+              padding: "4px 12px",
+              background: "rgba(255,215,0,0.1)",
+              border: "1px solid rgba(255,215,0,0.3)",
+              borderRadius: 4,
+              fontSize: "0.6rem",
+              color: "#FFD700",
+              letterSpacing: "0.1em",
+            }}
+          >
+            80,000W
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* Battery indicator */}
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <div style={{ fontSize: "0.55rem", color: "rgba(255,215,0,0.5)" }}>
+              BAT
+            </div>
+            <div
+              style={{
+                width: 40,
+                height: 14,
+                border: "1px solid rgba(255,215,0,0.4)",
+                borderRadius: 2,
+                overflow: "hidden",
+                background: "rgba(0,0,0,0.5)",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: `${overallCharge}%`,
+                  background:
+                    overallCharge < 30
+                      ? "#1a3a7a"
+                      : overallCharge < 70
+                        ? "#886600"
+                        : "#FFD700",
+                  transition: "width 0.3s",
+                }}
+              />
+            </div>
+            <div style={{ fontSize: "0.55rem", color: "rgba(255,215,0,0.7)" }}>
+              {Math.round(overallCharge)}%
+            </div>
+          </div>
+
+          {/* Master power */}
+          <button
+            type="button"
+            data-ocid="master.toggle"
+            onClick={() => {
+              setMasterPower((p) => !p);
+              logBlockchain("MASTER_POWER", masterPower ? "OFF" : "ON");
+            }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: `2px solid ${masterPower ? "#FFD700" : "rgba(255,215,0,0.2)"}`,
+              background: masterPower
+                ? "rgba(255,215,0,0.15)"
+                : "rgba(10,20,40,0.5)",
+              color: masterPower ? "#FFD700" : "rgba(255,215,0,0.3)",
+              cursor: "pointer",
+              fontSize: "1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: masterPower ? "0 0 16px rgba(255,215,0,0.4)" : "none",
+              transition: "all 0.2s",
+            }}
+          >
+            ⏻
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col px-4 md:px-6 py-5 gap-6 max-w-screen-2xl mx-auto w-full">
-        {/* ── SRS-22 SMART CHIP ── */}
-        <section className="eng-panel rounded-2xl p-5" data-ocid="srs22.panel">
-          <SectionLabel>
-            SRS-22 SMART CHIP · 3-CHANNEL VOLUME · BOOSTER UP TO 1500W
-          </SectionLabel>
-          {srsActive && (
-            <motion.div
-              className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-lg w-fit"
-              style={{
-                background: "oklch(0.78 0.18 192 / 0.12)",
-                border: "1px solid oklch(0.78 0.18 192 / 0.4)",
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <motion.div
-                className="w-2 h-2 rounded-full"
-                style={{ background: "oklch(0.78 0.18 192)" }}
-                animate={{ opacity: [1, 0.4, 1] }}
-                transition={{ repeat: Number.POSITIVE_INFINITY, duration: 0.8 }}
-              />
-              <span
-                className="text-xs font-bold tracking-widest"
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: "oklch(0.78 0.18 192)",
-                }}
-              >
-                SRS-22 ACTIVE
-              </span>
-            </motion.div>
-          )}
-          <div className="flex gap-6 flex-wrap">
-            {["VOL 1", "VOL 2", "VOL 3"].map((label, i) => (
-              <div key={label} className="flex flex-col items-center gap-3">
-                <span
-                  className="text-xs font-bold tracking-widest"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.85 0.22 70)",
-                  }}
-                >
-                  {label}
-                </span>
-                <div className="relative" style={{ width: 40, height: 180 }}>
-                  <div
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      width: 8,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      background: "oklch(0.14 0.02 265)",
-                      border: "1px solid oklch(0.22 0.025 265)",
-                    }}
-                  />
-                  <div
-                    className="absolute rounded-sm"
-                    style={{
-                      width: 8,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      bottom: 0,
-                      height: `${(srsVols[i] / 1500) * 100}%`,
-                      background:
-                        srsVols[i] > 1000
-                          ? "oklch(0.85 0.22 70)"
-                          : "oklch(0.72 0.18 192)",
-                      boxShadow: `0 0 8px ${srsVols[i] > 1000 ? "oklch(0.85 0.22 70 / 0.6)" : "oklch(0.72 0.18 192 / 0.4)"}`,
-                      transition: "height 0.1s, background 0.2s",
-                    }}
-                  />
-                  <input
-                    type="range"
-                    min={0}
-                    max={1500}
-                    step={10}
-                    value={srsVols[i]}
-                    onChange={(e) =>
-                      setSrsVols((prev) => {
-                        const n = [...prev];
-                        n[i] = Number(e.target.value);
-                        return n;
-                      })
-                    }
-                    data-ocid="srs22.input"
-                    aria-label={`${label} watts`}
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      opacity: 0,
-                      cursor: "ns-resize",
-                      width: "100%",
-                      height: "100%",
-                      writingMode: "vertical-lr" as any,
-                      direction: "rtl",
-                    }}
-                  />
-                </div>
-                <span
-                  className="tabular-nums text-xs font-bold"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.85 0.22 70)",
-                  }}
-                >
-                  {srsVols[i]}W
-                </span>
-                <button
-                  type="button"
-                  data-ocid="srs22.button"
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-all"
-                  style={{
-                    background: "oklch(0.85 0.22 70 / 0.12)",
-                    border: "1px solid oklch(0.85 0.22 70 / 0.4)",
-                    color: "oklch(0.85 0.22 70)",
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                  onClick={() =>
-                    setSrsVols((prev) => {
-                      const n = [...prev];
-                      n[i] = Math.min(1500, n[i] + 300);
-                      return n;
-                    })
-                  }
-                >
-                  +300W BOOST
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── 4 SOUND ENGINES ── */}
-        <section className="eng-panel rounded-2xl p-5" data-ocid="engine.panel">
-          <SectionLabel>
-            4 SOUND ENGINES · 120W AMP EACH · GENERATOR CONNECTED
-          </SectionLabel>
-          {allEnginesOn && (
-            <motion.div
-              className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-lg w-fit"
-              style={{
-                background: "oklch(0.72 0.22 145 / 0.12)",
-                border: "1px solid oklch(0.72 0.22 145 / 0.4)",
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <LucideZap size={12} style={{ color: "oklch(0.78 0.18 145)" }} />
-              <span
-                className="text-xs font-bold tracking-widest"
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: "oklch(0.78 0.18 145)",
-                }}
-              >
-                GENERATOR CONNECTED · ALL ENGINES ONLINE
-              </span>
-            </motion.div>
-          )}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[0, 1, 2, 3].map((i) => (
-              <motion.div
-                key={i}
-                className="rounded-xl p-4 flex flex-col gap-3"
-                animate={{ opacity: engineOn[i] ? 1 : 0.4 }}
-                style={{
-                  background: engineOn[i]
-                    ? "oklch(0.12 0.02 265)"
-                    : "oklch(0.09 0.01 265)",
-                  border: `1px solid ${engineOn[i] ? "oklch(0.78 0.18 192 / 0.35)" : "oklch(0.18 0.02 265)"}`,
-                  boxShadow: engineOn[i]
-                    ? "0 0 20px oklch(0.78 0.18 192 / 0.1)"
-                    : "none",
-                  transition: "all 0.3s",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    className="text-xs font-black tracking-widest"
-                    style={{
-                      fontFamily: "'Bricolage Grotesque', sans-serif",
-                      color: engineOn[i]
-                        ? "oklch(0.90 0.03 200)"
-                        : "oklch(0.40 0.02 220)",
-                    }}
-                  >
-                    ENGINE {i + 1}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <motion.div
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{
-                        background: engineOn[i]
-                          ? "oklch(0.72 0.22 145)"
-                          : "oklch(0.55 0.22 25)",
-                      }}
-                      animate={{
-                        boxShadow: engineOn[i]
-                          ? [
-                              "0 0 4px oklch(0.72 0.22 145)",
-                              "0 0 10px oklch(0.82 0.22 145)",
-                              "0 0 4px oklch(0.72 0.22 145)",
-                            ]
-                          : ["none"],
-                      }}
-                      transition={{
-                        repeat: Number.POSITIVE_INFINITY,
-                        duration: 1.2,
-                      }}
-                    />
-                    <button
-                      type="button"
-                      data-ocid={`engine.toggle.${i + 1}`}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                      style={{
-                        background: engineOn[i]
-                          ? "oklch(0.72 0.22 145 / 0.15)"
-                          : "oklch(0.55 0.22 25 / 0.15)",
-                        border: `1px solid ${engineOn[i] ? "oklch(0.72 0.22 145 / 0.5)" : "oklch(0.55 0.22 25 / 0.5)"}`,
-                        color: engineOn[i]
-                          ? "oklch(0.78 0.18 145)"
-                          : "oklch(0.65 0.22 25)",
-                      }}
-                      onClick={() =>
-                        setEngineOn((prev) => {
-                          const n = [...prev];
-                          n[i] = !n[i];
-                          return n;
-                        })
-                      }
-                      aria-label={`Toggle Engine ${i + 1}`}
-                    >
-                      <LucidePower size={14} />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between">
-                    <span
-                      className="text-xs"
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        color: "oklch(0.45 0.04 220)",
-                      }}
-                    >
-                      AMP
-                    </span>
-                    <span
-                      className="text-xs font-bold"
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        color: engineOn[i]
-                          ? "oklch(0.85 0.22 70)"
-                          : "oklch(0.40 0.03 220)",
-                      }}
-                    >
-                      {engineAmp[i]}W
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={120}
-                    step={1}
-                    value={engineAmp[i]}
-                    onChange={(e) =>
-                      setEngineAmp((prev) => {
-                        const n = [...prev];
-                        n[i] = Number(e.target.value);
-                        return n;
-                      })
-                    }
-                    disabled={!engineOn[i]}
-                    className="w-full h-2 rounded-full appearance-none cursor-pointer disabled:opacity-30"
-                    style={{ accentColor: "oklch(0.78 0.18 192)" }}
-                    aria-label={`Engine ${i + 1} AMP level`}
-                  />
-                </div>
-                <div
-                  className="text-xs text-center py-1 rounded"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    background: engineOn[i]
-                      ? "oklch(0.78 0.18 192 / 0.08)"
-                      : "transparent",
-                    color: engineOn[i]
-                      ? "oklch(0.78 0.18 192)"
-                      : "oklch(0.35 0.03 220)",
-                    border: "1px solid transparent",
-                  }}
-                >
-                  {engineOn[i] ? "ONLINE" : "OFF"}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <span
-              className="text-xs"
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                color: "oklch(0.45 0.04 220)",
-              }}
-            >
-              MASTER OUTPUT
-            </span>
-            <div
-              className="flex-1 h-2 rounded-full overflow-hidden"
-              style={{ background: "oklch(0.14 0.02 265)", maxWidth: 300 }}
-            >
-              <motion.div
-                className="h-full rounded-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, oklch(0.72 0.18 192), oklch(0.85 0.22 70))",
-                }}
-                animate={{ width: `${masterOutput * 100}%` }}
-                transition={{ type: "spring", stiffness: 120, damping: 20 }}
-              />
-            </div>
-            <span
-              className="text-xs font-bold"
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                color: "oklch(0.85 0.22 70)",
-              }}
-            >
-              {Math.round(masterOutput * 100)}%
-            </span>
-          </div>
-        </section>
-
-        {/* ── Music Player ── */}
-        <MusicPlayer />
-
-        {/* ── EQ Curve ── */}
+      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
+        {/* ── ROW 1: Battery Charger + 2 Batteries ──────────────────────── */}
         <section
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: "oklch(0.10 0.018 265)",
-            border: "1px solid oklch(0.18 0.025 265)",
-            boxShadow: "inset 0 1px 0 oklch(0.25 0.03 265 / 0.3)",
-          }}
-        >
-          <div className="flex items-center justify-between px-4 pt-3 pb-1">
-            <span
-              className="text-xs font-semibold tracking-widest uppercase"
-              style={{
-                color: "oklch(0.40 0.04 220)",
-                fontFamily: "'Bricolage Grotesque', sans-serif",
-              }}
-            >
-              FREQUENCY RESPONSE · ZERO DISTORTION EQ
-            </span>
-          </div>
-          <div style={{ height: 160 }}>
-            <EQCurve gains={effectiveGains} />
-          </div>
-        </section>
-
-        {/* ── 30-Band EQ ── */}
-        <section
-          className="rounded-2xl"
-          style={{
-            background:
-              "linear-gradient(180deg, oklch(0.115 0.02 265) 0%, oklch(0.095 0.016 265) 100%)",
-            border: "1px solid oklch(0.20 0.025 265)",
-            boxShadow: "inset 0 1px 0 oklch(0.28 0.035 265 / 0.4)",
-          }}
-          data-ocid="eq.panel"
+          className="glass-panel-bright"
+          data-ocid="battery.panel"
+          style={{ padding: 24, marginBottom: 24 }}
         >
           <div
-            className="flex items-center justify-between px-5 pt-4 pb-3"
-            style={{ borderBottom: "1px solid oklch(0.18 0.025 265)" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 20,
+            }}
           >
-            <span
-              className="text-xs font-semibold tracking-widest uppercase"
+            <div
               style={{
-                color: "oklch(0.42 0.04 220)",
-                fontFamily: "'Bricolage Grotesque', sans-serif",
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: charging ? "#FFD700" : "rgba(255,215,0,0.2)",
+                boxShadow: charging ? "0 0 8px #FFD700" : "none",
+              }}
+            />
+            <span
+              className="gold-text"
+              style={{
+                fontSize: "0.75rem",
+                letterSpacing: "0.2em",
+                fontWeight: 700,
               }}
             >
-              GRAPHIC EQUALIZER · 30 BAND · EQ STABILIZER
+              BATTERY SYSTEM — 1,600,000 mAh TOTAL
             </span>
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={activePreset}
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                className="text-xs font-medium"
-                style={{
-                  color: "oklch(0.78 0.18 192)",
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                {activePreset}
-              </motion.span>
-            </AnimatePresence>
           </div>
-          <div className="flex">
+
+          <div
+            style={{
+              display: "flex",
+              gap: 24,
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+            }}
+          >
+            {/* Batteries */}
+            <div style={{ display: "flex", gap: 32, alignItems: "flex-end" }}>
+              <BatteryDisplay charge={charge1} label="BATTERY A" />
+              <BatteryDisplay charge={charge2} label="BATTERY B" />
+            </div>
+
+            {/* Charger panel */}
             <div
-              className="flex-shrink-0 flex flex-col justify-between py-6 px-2"
-              style={{ paddingTop: 28, paddingBottom: 28 }}
+              style={{
+                flex: 1,
+                minWidth: 280,
+                background: "rgba(10,20,45,0.7)",
+                border: "1px solid rgba(255,215,0,0.2)",
+                borderRadius: 8,
+                padding: 20,
+              }}
             >
-              {["+12", "+6", "0", "-6", "-12"].map((v) => (
-                <span
-                  key={v}
+              <div className="gold-label" style={{ marginBottom: 16 }}>
+                BATTERY CHARGER — 200,000W OUTPUT
+              </div>
+
+              {/* Overall progress */}
+              <div style={{ marginBottom: 16 }}>
+                <div
                   style={{
-                    fontSize: 9,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color:
-                      v === "0"
-                        ? "oklch(0.45 0.04 220)"
-                        : "oklch(0.32 0.03 220)",
-                    lineHeight: 1,
-                    textAlign: "right",
-                    minWidth: 22,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 6,
                   }}
                 >
-                  {v}
-                </span>
-              ))}
-            </div>
-            <div
-              className="flex-1 overflow-x-auto pb-4 pt-2 px-2"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "oklch(0.22 0.025 265) transparent",
-              }}
-            >
-              <div className="flex gap-0.5" style={{ minWidth: "max-content" }}>
-                {BANDS_30.map((band, i) => (
-                  <EQFader
-                    key={band.freq}
-                    index={i}
-                    band={band}
-                    gain={effectiveGains[i]}
-                    onChange={handleBandChange}
+                  <span
+                    style={{ fontSize: "0.6rem", color: "rgba(255,215,0,0.6)" }}
+                  >
+                    CHARGE LEVEL
+                  </span>
+                  <span style={{ fontSize: "0.6rem", color: "#FFD700" }}>
+                    {Math.round(overallCharge)}%
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: 8,
+                    background: "rgba(255,255,255,0.05)",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,215,0,0.15)",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${overallCharge}%`,
+                      background:
+                        overallCharge < 50
+                          ? "linear-gradient(90deg, #0a2260, #1a4499)"
+                          : "linear-gradient(90deg, #1a4499, #cc8800, #FFD700)",
+                      borderRadius: 4,
+                      transition: "width 0.3s",
+                      boxShadow:
+                        overallCharge > 50
+                          ? "0 0 8px rgba(255,215,0,0.5)"
+                          : "none",
+                    }}
                   />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div
+                style={{
+                  fontSize: "0.65rem",
+                  color: batteriesFullyCharged
+                    ? "#FFD700"
+                    : "rgba(255,215,0,0.5)",
+                  marginBottom: 16,
+                  textShadow: batteriesFullyCharged
+                    ? "0 0 8px rgba(255,215,0,0.6)"
+                    : "none",
+                }}
+                className={charging ? "charging-text" : ""}
+              >
+                {batteriesFullyCharged
+                  ? "✓ BATTERIES CHARGED — SYSTEM READY"
+                  : charging
+                    ? "⚡ CHARGING IN PROGRESS..."
+                    : "⚠ SYSTEM LOCKED — Charge batteries to begin"}
+              </div>
+
+              {/* Charge button */}
+              <button
+                type="button"
+                data-ocid="battery.charge_button"
+                onClick={startCharging}
+                disabled={charging || batteriesFullyCharged}
+                className={
+                  batteriesFullyCharged ? "" : !charging ? "gold-pulse" : ""
+                }
+                style={{
+                  width: "100%",
+                  padding: "12px 0",
+                  background: batteriesFullyCharged
+                    ? "rgba(255,215,0,0.1)"
+                    : charging
+                      ? "rgba(255,165,0,0.15)"
+                      : "rgba(255,215,0,0.2)",
+                  border: `2px solid ${batteriesFullyCharged ? "rgba(255,215,0,0.2)" : "#FFD700"}`,
+                  borderRadius: 6,
+                  color: batteriesFullyCharged
+                    ? "rgba(255,215,0,0.4)"
+                    : "#FFD700",
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.15em",
+                  cursor:
+                    charging || batteriesFullyCharged
+                      ? "not-allowed"
+                      : "pointer",
+                  transition: "all 0.2s",
+                  textShadow: batteriesFullyCharged
+                    ? "none"
+                    : "0 0 8px rgba(255,215,0,0.6)",
+                }}
+              >
+                {batteriesFullyCharged
+                  ? "✓ FULLY CHARGED"
+                  : charging
+                    ? "⚡ CHARGING..."
+                    : "⚡ CHARGE BATTERIES"}
+              </button>
+
+              {/* Voltage display */}
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                }}
+              >
+                {[
+                  "VOLTAGE: 48V DC",
+                  "AMPS: 4,167A",
+                  "EFFICIENCY: 99.1%",
+                  "TEMP: 23°C",
+                ].map((stat) => (
+                  <div
+                    key={stat}
+                    style={{
+                      fontSize: "0.55rem",
+                      color: "rgba(255,215,0,0.4)",
+                      borderTop: "1px solid rgba(255,215,0,0.1)",
+                      paddingTop: 6,
+                    }}
+                  >
+                    {stat}
+                  </div>
                 ))}
               </div>
             </div>
           </div>
         </section>
 
-        {/* Presets */}
+        {/* ── ROW 2: File Picker ─────────────────────────────────────────── */}
         <section
-          className="flex flex-wrap items-center gap-2"
-          data-ocid="eq.preset.panel"
+          className="glass-panel"
+          style={{ padding: 20, marginBottom: 24 }}
         >
-          <span
-            className="text-xs font-semibold tracking-widest uppercase mr-1"
+          <div className="gold-label" style={{ marginBottom: 12 }}>
+            FILE LOADER — DROP AUDIO FILES
+          </div>
+
+          {/* Drop zone */}
+          <div
+            data-ocid="player.dropzone"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDraggingOver(true);
+            }}
+            onDragLeave={() => setIsDraggingOver(false)}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") fileInputRef.current?.click();
+            }}
             style={{
-              color: "oklch(0.38 0.03 220)",
-              fontFamily: "'Bricolage Grotesque', sans-serif",
+              border: `2px dashed ${isDraggingOver ? "#FFD700" : "rgba(255,215,0,0.35)"}`,
+              borderRadius: 8,
+              padding: "28px 20px",
+              textAlign: "center",
+              cursor: "pointer",
+              background: isDraggingOver
+                ? "rgba(255,215,0,0.05)"
+                : "transparent",
+              transition: "all 0.2s",
+              boxShadow: isDraggingOver
+                ? "0 0 20px rgba(255,215,0,0.2)"
+                : "none",
             }}
           >
-            PRESETS
-          </span>
-          {PRESET_NAMES.map((name, i) => (
-            <motion.button
-              key={name}
-              data-ocid={`eq.preset.button.${i + 1}`}
-              onClick={() => applyPreset(name)}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.94 }}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200"
+            <div style={{ fontSize: "2rem", marginBottom: 8 }}>🎵</div>
+            <div
               style={{
-                background:
-                  activePreset === name
-                    ? "oklch(0.78 0.18 192 / 0.12)"
-                    : "oklch(0.13 0.02 265)",
-                border:
-                  activePreset === name
-                    ? "1px solid oklch(0.78 0.18 192 / 0.5)"
-                    : "1px solid oklch(0.20 0.025 265)",
-                color:
-                  activePreset === name
-                    ? "oklch(0.84 0.18 192)"
-                    : "oklch(0.55 0.04 220)",
-                boxShadow:
-                  activePreset === name
-                    ? "0 0 14px oklch(0.78 0.18 192 / 0.3)"
-                    : "none",
-                fontFamily: "'Satoshi', sans-serif",
+                fontSize: "0.7rem",
+                color: "rgba(255,215,0,0.7)",
+                letterSpacing: "0.1em",
               }}
             >
-              {name}
-            </motion.button>
-          ))}
-          <div className="flex-1" />
-          <motion.button
-            data-ocid="eq.button"
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.94 }}
-            onClick={() => applyPreset("Flat")}
-            className="px-5 py-1.5 rounded-full text-sm transition-all duration-200"
+              DROP AUDIO FILES HERE or CLICK TO BROWSE
+            </div>
+            <div
+              style={{
+                fontSize: "0.55rem",
+                color: "rgba(255,215,0,0.35)",
+                marginTop: 6,
+              }}
+            >
+              MP3 · WAV · FLAC · OGG · M4A
+            </div>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => addFiles(e.target.files)}
+            data-ocid="player.upload_button"
+          />
+
+          {/* Track queue */}
+          {tracks.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div className="gold-label" style={{ marginBottom: 8 }}>
+                TRACK QUEUE — {tracks.length} LOADED
+              </div>
+              <div
+                style={{
+                  maxHeight: 140,
+                  overflowY: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                {tracks.map((t, i) => (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => playTrack(i)}
+                    style={{
+                      padding: "6px 12px",
+                      background:
+                        currentTrackIdx === i
+                          ? "rgba(255,215,0,0.12)"
+                          : "transparent",
+                      border: `1px solid ${currentTrackIdx === i ? "rgba(255,215,0,0.4)" : "rgba(255,215,0,0.08)"}`,
+                      borderRadius: 4,
+                      color:
+                        currentTrackIdx === i
+                          ? "#FFD700"
+                          : "rgba(255,255,255,0.6)",
+                      fontFamily: "JetBrains Mono, monospace",
+                      fontSize: "0.65rem",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <span
+                      style={{ color: "rgba(255,215,0,0.3)", minWidth: 24 }}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    {currentTrackIdx === i && isPlaying && <span>▶</span>}
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── ROW 3: Player Controls ────────────────────────────────────── */}
+        <section
+          className="glass-panel-bright"
+          style={{
+            padding: 20,
+            marginBottom: 24,
+            position: "relative",
+            boxShadow: batteriesFullyCharged
+              ? "0 0 30px rgba(255,215,0,0.15), inset 0 1px 0 rgba(255,215,0,0.12)"
+              : "none",
+          }}
+        >
+          {/* Lock overlay */}
+          {!batteriesFullyCharged && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 10,
+                background: "rgba(4,8,15,0.7)",
+                borderRadius: 12,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "column",
+                gap: 8,
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              <div style={{ fontSize: "2rem" }}>🔒</div>
+              <div
+                style={{
+                  fontSize: "0.6rem",
+                  color: "rgba(255,215,0,0.6)",
+                  letterSpacing: "0.2em",
+                }}
+              >
+                CHARGE BATTERIES TO UNLOCK
+              </div>
+            </div>
+          )}
+
+          <div className="gold-label" style={{ marginBottom: 16 }}>
+            PLAYER CONTROLS
+          </div>
+
+          {/* Track info */}
+          <div style={{ textAlign: "center", marginBottom: 12 }}>
+            <div
+              style={{
+                fontSize: "0.9rem",
+                color: "rgba(255,255,255,0.9)",
+                fontWeight: 700,
+              }}
+            >
+              {tracks[currentTrackIdx]?.name ?? "NO TRACK LOADED"}
+            </div>
+            <div
+              style={{
+                fontSize: "0.6rem",
+                color: "rgba(255,215,0,0.5)",
+                marginTop: 2,
+              }}
+            >
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div
+            onKeyDown={() => {}}
+            onClick={(e) => {
+              if (!batteriesFullyCharged || !duration || !audioRef.current)
+                return;
+              const rect = (
+                e.currentTarget as HTMLDivElement
+              ).getBoundingClientRect();
+              const pct = (e.clientX - rect.left) / rect.width;
+              audioRef.current.currentTime = pct * duration;
+            }}
             style={{
-              background: "oklch(0.13 0.02 265)",
-              border: "1px solid oklch(0.22 0.025 265)",
-              color: "oklch(0.50 0.04 220)",
-              fontFamily: "'Satoshi', sans-serif",
+              height: 6,
+              background: "rgba(255,215,0,0.1)",
+              borderRadius: 3,
+              marginBottom: 16,
+              cursor: "pointer",
+              border: "1px solid rgba(255,215,0,0.15)",
+              position: "relative",
             }}
           >
-            RESET
-          </motion.button>
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: duration ? `${(currentTime / duration) * 100}%` : "0%",
+                background: "linear-gradient(90deg, #1a4499, #FFD700)",
+                borderRadius: 3,
+                transition: "width 0.5s linear",
+                boxShadow: "0 0 8px rgba(255,215,0,0.4)",
+              }}
+            />
+          </div>
+
+          {/* Controls row */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
+            {/* Shuffle */}
+            <button
+              type="button"
+              onClick={() => setShuffle((p) => !p)}
+              style={{
+                background: shuffle ? "rgba(255,215,0,0.15)" : "transparent",
+                border: `1px solid ${shuffle ? "rgba(255,215,0,0.5)" : "rgba(255,215,0,0.2)"}`,
+                borderRadius: 4,
+                padding: "4px 8px",
+                color: shuffle ? "#FFD700" : "rgba(255,215,0,0.3)",
+                cursor: "pointer",
+                fontSize: "0.6rem",
+              }}
+            >
+              SHUF
+            </button>
+
+            {/* Prev */}
+            <button
+              type="button"
+              data-ocid="player.secondary_button"
+              onClick={prevTrack}
+              disabled={!batteriesFullyCharged}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 8,
+                background: "rgba(255,215,0,0.08)",
+                border: "1px solid rgba(255,215,0,0.2)",
+                color: "rgba(255,215,0,0.7)",
+                cursor: batteriesFullyCharged ? "pointer" : "not-allowed",
+                fontSize: "1.1rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ⏮
+            </button>
+
+            {/* Play/Pause */}
+            <button
+              type="button"
+              data-ocid="player.primary_button"
+              onClick={togglePlay}
+              disabled={!batteriesFullyCharged || !tracks.length}
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background: isPlaying
+                  ? "radial-gradient(circle, #FFD700, #cc8800)"
+                  : "radial-gradient(circle, rgba(255,215,0,0.3), rgba(200,150,0,0.2))",
+                border: `2px solid ${isPlaying ? "#FFD700" : "rgba(255,215,0,0.4)"}`,
+                color: isPlaying ? "#0a1628" : "#FFD700",
+                cursor:
+                  batteriesFullyCharged && tracks.length
+                    ? "pointer"
+                    : "not-allowed",
+                fontSize: "1.4rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: isPlaying
+                  ? "0 0 24px rgba(255,215,0,0.6), 0 0 48px rgba(255,215,0,0.3)"
+                  : "none",
+                transition: "all 0.2s",
+              }}
+            >
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+
+            {/* Next */}
+            <button
+              type="button"
+              data-ocid="player.secondary_button"
+              onClick={nextTrack}
+              disabled={!batteriesFullyCharged}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 8,
+                background: "rgba(255,215,0,0.08)",
+                border: "1px solid rgba(255,215,0,0.2)",
+                color: "rgba(255,215,0,0.7)",
+                cursor: batteriesFullyCharged ? "pointer" : "not-allowed",
+                fontSize: "1.1rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ⏭
+            </button>
+
+            {/* Repeat */}
+            <button
+              type="button"
+              onClick={() => setRepeat((p) => !p)}
+              style={{
+                background: repeat ? "rgba(255,215,0,0.15)" : "transparent",
+                border: `1px solid ${repeat ? "rgba(255,215,0,0.5)" : "rgba(255,215,0,0.2)"}`,
+                borderRadius: 4,
+                padding: "4px 8px",
+                color: repeat ? "#FFD700" : "rgba(255,215,0,0.3)",
+                cursor: "pointer",
+                fontSize: "0.6rem",
+              }}
+            >
+              RPT
+            </button>
+          </div>
+
+          {/* Volume */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span
+              style={{
+                fontSize: "0.6rem",
+                color: "rgba(255,215,0,0.5)",
+                minWidth: 40,
+              }}
+            >
+              VOL
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="vol-slider"
+              style={{ flex: 1 }}
+            />
+            <span
+              style={{ fontSize: "0.6rem", color: "#FFD700", minWidth: 30 }}
+            >
+              {volume}%
+            </span>
+          </div>
         </section>
 
-        {/* ── Stabilizer & Epicenter ── */}
+        {/* ── ROW 4: Waveform Visualizer ─────────────────────────────────── */}
         <section
-          className="eng-panel rounded-2xl p-5"
-          data-ocid="stabilizer.panel"
+          className="glass-panel"
+          style={{ padding: 16, marginBottom: 24, overflow: "hidden" }}
         >
-          <SectionLabel>
-            80,000W STABILIZER · ZERO-CENTER EPICENTER GAUGE
-          </SectionLabel>
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            {/* SVG Gauge */}
-            <div
-              className="relative flex-shrink-0"
-              style={{ width: 240, height: 220 }}
+          <div className="gold-label" style={{ marginBottom: 8 }}>
+            FREQUENCY ANALYZER — REAL-TIME SPECTRUM
+          </div>
+          <canvas
+            ref={canvasRef}
+            width={1160}
+            height={120}
+            style={{
+              width: "100%",
+              height: 120,
+              borderRadius: 6,
+              display: "block",
+            }}
+          />
+        </section>
+
+        {/* ── ROW 5: 10-Band EQ ──────────────────────────────────────────── */}
+        <section
+          className="glass-panel-bright"
+          data-ocid="eq.panel"
+          style={{ padding: 20, marginBottom: 24 }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <span
+              className="gold-text"
+              style={{
+                fontSize: "0.75rem",
+                letterSpacing: "0.2em",
+                fontWeight: 700,
+              }}
             >
-              <svg
-                viewBox="0 0 240 220"
-                width={240}
-                height={220}
-                data-ocid="stabilizer.canvas_target"
-                role="img"
-                aria-label="Stabilizer epicenter gauge"
-                style={{ cursor: "ew-resize", userSelect: "none" }}
-                onMouseDown={(e) => handleStabDragStart(e.clientX)}
-                onTouchStart={(e) => handleStabDragStart(e.touches[0].clientX)}
-              >
-                <defs>
-                  <filter id="stabGlow">
-                    <feGaussianBlur stdDeviation="4" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                {/* Background arc */}
-                <path
-                  d={`M ${arcX1} ${arcY1} A ${r} ${r} 0 1 1 ${arcX2} ${arcY2}`}
-                  fill="none"
-                  stroke="oklch(0.18 0.025 265)"
-                  strokeWidth={14}
-                  strokeLinecap="round"
-                />
-                {/* Active arc */}
-                <motion.path
-                  d={`M ${cx} ${cy - r} A ${r} ${r} 0 ${Math.abs(stabAngle) > 90 ? 1 : 0} ${stabAngle >= 0 ? 1 : 0} ${px} ${py}`}
-                  fill="none"
-                  stroke={
-                    Math.abs(stabilizerPos) <= 5
-                      ? "oklch(0.72 0.22 145)"
-                      : "oklch(0.78 0.18 192)"
-                  }
-                  strokeWidth={8}
-                  strokeLinecap="round"
-                  filter="url(#stabGlow)"
-                  animate={{
-                    stroke:
-                      Math.abs(stabilizerPos) <= 5
-                        ? "oklch(0.72 0.22 145)"
-                        : "oklch(0.78 0.18 192)",
-                  }}
-                />
-                {/* Tick marks */}
-                {[-100, -75, -50, -25, 0, 25, 50, 75, 100].map((v) => {
-                  const a = ((v + 100) / 200) * 270 - 135;
-                  const ir = r - 12;
-                  const or = r + 4;
-                  const x1 = cx + ir * Math.cos(toRad(a));
-                  const y1 = cy + ir * Math.sin(toRad(a));
-                  const x2 = cx + or * Math.cos(toRad(a));
-                  const y2 = cy + or * Math.sin(toRad(a));
-                  return (
-                    <line
-                      key={v}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke={
-                        v === 0
-                          ? "oklch(0.72 0.22 145)"
-                          : "oklch(0.28 0.03 265)"
-                      }
-                      strokeWidth={v === 0 ? 2 : 1}
-                    />
-                  );
-                })}
-                {/* Needle */}
-                <motion.line
-                  x1={cx}
-                  y1={cy}
-                  x2={needleX}
-                  y2={needleY}
-                  stroke="oklch(0.85 0.22 70)"
-                  strokeWidth={3}
-                  strokeLinecap="round"
-                  filter="url(#stabGlow)"
-                  animate={{ x2: needleX, y2: needleY }}
-                  transition={{ type: "spring", stiffness: 180, damping: 22 }}
-                />
-                <circle cx={cx} cy={cy} r={6} fill="oklch(0.85 0.22 70)" />
-                {/* Labels */}
-                <text
-                  x={35}
-                  y={195}
-                  fill="oklch(0.35 0.03 220)"
-                  fontSize="10"
-                  fontFamily="JetBrains Mono, monospace"
-                  textAnchor="middle"
-                >
-                  -100
-                </text>
-                <text
-                  x={205}
-                  y={195}
-                  fill="oklch(0.35 0.03 220)"
-                  fontSize="10"
-                  fontFamily="JetBrains Mono, monospace"
-                  textAnchor="middle"
-                >
-                  +100
-                </text>
-                <text
-                  x={cx}
-                  y={210}
-                  fill="oklch(0.85 0.22 70)"
-                  fontSize="11"
-                  fontFamily="JetBrains Mono, monospace"
-                  textAnchor="middle"
-                  fontWeight="bold"
-                >
-                  0
-                </text>
-              </svg>
-            </div>
-            <div className="flex flex-col gap-4">
-              <div>
-                <div
-                  className="text-xs mb-1"
+              10-BAND GRAPHIC EQUALIZER — REAL AUDIO PROCESSING
+            </span>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {Object.keys(EQ_PRESETS).map((name) => (
+                <button
+                  type="button"
+                  key={name}
+                  onClick={() => applyPreset(name)}
                   style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.45 0.04 220)",
-                  }}
-                >
-                  POSITION
-                </div>
-                <div
-                  className="text-3xl font-black tabular-nums"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
+                    padding: "3px 8px",
+                    background:
+                      eqPreset === name ? "rgba(255,215,0,0.2)" : "transparent",
+                    border: `1px solid ${eqPreset === name ? "rgba(255,215,0,0.6)" : "rgba(255,215,0,0.15)"}`,
+                    borderRadius: 3,
                     color:
-                      stabilizerPos >= 0
-                        ? "oklch(0.85 0.22 70)"
-                        : "oklch(0.78 0.18 192)",
+                      eqPreset === name ? "#FFD700" : "rgba(255,215,0,0.4)",
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: "0.55rem",
+                    cursor: "pointer",
+                    letterSpacing: "0.1em",
+                    transition: "all 0.15s",
                   }}
                 >
-                  {stabilizerPos >= 0 ? "+" : ""}
-                  {stabilizerPos.toFixed(1)}
-                </div>
-              </div>
-              <div>
-                <div
-                  className="text-xs mb-1"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.45 0.04 220)",
-                  }}
-                >
-                  HARMONIC SIGNAL
-                </div>
-                <div
-                  className="text-2xl font-black"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.78 0.18 192)",
-                  }}
-                >
-                  {harmonicPct}%
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <motion.div
-                  className="w-3 h-3 rounded-full"
-                  style={{
-                    background: zeroCentered
-                      ? "oklch(0.72 0.22 145)"
-                      : "oklch(0.55 0.22 25)",
-                  }}
-                  animate={{
-                    boxShadow: zeroCentered
-                      ? [
-                          "0 0 4px oklch(0.72 0.22 145)",
-                          "0 0 12px oklch(0.82 0.22 145)",
-                          "0 0 4px oklch(0.72 0.22 145)",
-                        ]
-                      : ["none"],
-                  }}
-                  transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1 }}
-                />
-                <span
-                  className="text-xs font-bold tracking-wider"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: zeroCentered
-                      ? "oklch(0.72 0.22 145)"
-                      : "oklch(0.55 0.04 220)",
-                  }}
-                >
-                  {zeroCentered ? "ZERO CENTER ✓" : "OFF CENTER"}
-                </span>
-              </div>
-              <p
-                className="text-xs"
-                style={{
-                  color: "oklch(0.38 0.03 220)",
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                ← DRAG GAUGE TO ADJUST →
-              </p>
+                  {name.toUpperCase()}
+                </button>
+              ))}
             </div>
           </div>
-        </section>
 
-        {/* ── Monitor / Compressor ── */}
-        <section
-          className="eng-panel rounded-2xl p-5"
-          data-ocid="monitor.panel"
-        >
-          <SectionLabel>
-            MONITOR COMMANDER · 100% HARMONIC SIGNAL CORRECTION · NOISE FLOOR
-            ZERO
-          </SectionLabel>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-4">
-              {/* Input VU */}
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span
-                    className="text-xs"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.45 0.04 220)",
-                    }}
-                  >
-                    INPUT LEVEL
-                  </span>
-                  <span
-                    className="text-xs font-bold tabular-nums"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.78 0.18 192)",
-                    }}
-                  >
-                    {Math.round(vuInput)}%
-                  </span>
-                </div>
-                <div
-                  className="relative h-5 rounded-full overflow-hidden"
-                  style={{ background: "oklch(0.14 0.02 265)" }}
-                >
-                  <motion.div
-                    className="absolute left-0 top-0 h-full rounded-full"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, oklch(0.72 0.18 192), oklch(0.85 0.18 145) 70%, oklch(0.65 0.22 25) 90%)",
-                    }}
-                    animate={{ width: `${Math.min(100, vuInput)}%` }}
-                    transition={{ duration: 0.15 }}
-                  />
-                </div>
-              </div>
-              {/* Output VU */}
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span
-                    className="text-xs"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.45 0.04 220)",
-                    }}
-                  >
-                    OUTPUT LEVEL
-                  </span>
-                  <span
-                    className="text-xs font-bold tabular-nums"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.85 0.22 70)",
-                    }}
-                  >
-                    {Math.round(vuOutput)}%
-                  </span>
-                </div>
-                <div
-                  className="relative h-5 rounded-full overflow-hidden"
-                  style={{ background: "oklch(0.14 0.02 265)" }}
-                >
-                  <motion.div
-                    className="absolute left-0 top-0 h-full rounded-full"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, oklch(0.72 0.22 145), oklch(0.85 0.22 70) 70%, oklch(0.65 0.22 25) 90%)",
-                    }}
-                    animate={{ width: `${Math.min(100, vuOutput)}%` }}
-                    transition={{ duration: 0.15 }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col gap-4">
-              {/* Harmonic Correction Slider */}
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span
-                    className="text-xs"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.45 0.04 220)",
-                    }}
-                  >
-                    HARMONIC CORRECTION
-                  </span>
-                  <span
-                    className="text-xs font-bold"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.78 0.18 192)",
-                    }}
-                  >
-                    {harmonicCorrection}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={harmonicCorrection}
-                  onChange={(e) =>
-                    setHarmonicCorrection(Number(e.target.value))
-                  }
-                  data-ocid="monitor.input"
-                  aria-label="Harmonic correction"
-                  className="w-full"
-                  style={{ accentColor: "oklch(0.78 0.18 192)" }}
-                />
-              </div>
-              {/* Noise floor */}
-              <div
-                className="flex items-center gap-3 p-3 rounded-xl"
-                style={{
-                  background:
-                    harmonicCorrection > 80
-                      ? "oklch(0.72 0.22 145 / 0.1)"
-                      : "oklch(0.14 0.02 265)",
-                  border: `1px solid ${harmonicCorrection > 80 ? "oklch(0.72 0.22 145 / 0.4)" : "oklch(0.20 0.025 265)"}`,
-                  transition: "all 0.3s",
-                }}
-              >
-                <LucideActivity
-                  size={16}
-                  style={{
-                    color:
-                      harmonicCorrection > 80
-                        ? "oklch(0.72 0.22 145)"
-                        : "oklch(0.40 0.04 220)",
-                  }}
-                />
-                <div>
-                  <div
-                    className="text-xs"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.45 0.04 220)",
-                    }}
-                  >
-                    NOISE FLOOR
-                  </div>
-                  <div
-                    className="text-lg font-black"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color:
-                        harmonicCorrection > 80
-                          ? "oklch(0.72 0.22 145)"
-                          : "oklch(0.55 0.04 220)",
-                    }}
-                  >
-                    {harmonicCorrection > 80
-                      ? "ZERO"
-                      : `${Math.round((100 - harmonicCorrection) * 0.5)}dB`}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Room Magnet ── */}
-        <section className="eng-panel rounded-2xl p-5" data-ocid="room.panel">
-          <SectionLabel>
-            VIRTUAL SOUND FIELD · ROOM MAGNET · CENTERED RADIUS
-          </SectionLabel>
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            {/* Concentric circles */}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            {/* dB scale */}
             <div
-              className="relative flex-shrink-0"
-              style={{ width: 200, height: 200 }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                height: 180,
+                paddingBottom: 20,
+              }}
             >
-              <svg
-                viewBox="0 0 200 200"
-                width={200}
-                height={200}
-                role="img"
-                aria-label="Room sound field visualization"
-              >
-                {[1, 2, 3, 4, 5].map((ring) => {
-                  const maxR = 85;
-                  const ringR = (ring / 5) * maxR * (roomSize / 50);
-                  const active = ring <= Math.ceil((roomSize / 50) * 5);
-                  return (
-                    <motion.circle
-                      key={ring}
-                      cx={100}
-                      cy={100}
-                      r={ringR}
-                      fill="none"
-                      stroke={
-                        active
-                          ? "oklch(0.78 0.18 192)"
-                          : "oklch(0.18 0.025 265)"
-                      }
-                      strokeWidth={active ? 1.5 : 0.5}
-                      animate={{
-                        r: ringR,
-                        stroke: active
-                          ? "oklch(0.78 0.18 192)"
-                          : "oklch(0.18 0.025 265)",
-                        opacity: active ? 1 - ring * 0.12 : 0.2,
-                      }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 120,
-                        damping: 20,
-                      }}
-                    />
-                  );
-                })}
-                <circle
-                  cx={100}
-                  cy={100}
-                  r={6}
-                  fill="oklch(0.78 0.18 192)"
-                  style={{
-                    filter: "drop-shadow(0 0 6px oklch(0.78 0.18 192))",
-                  }}
-                />
-                <text
-                  x={100}
-                  y={190}
-                  fill="oklch(0.45 0.04 220)"
-                  fontSize="10"
-                  textAnchor="middle"
-                  fontFamily="JetBrains Mono, monospace"
-                >
-                  CENTERED · {roomSize}FT
-                </text>
-              </svg>
-            </div>
-            <div
-              className="flex-1 flex flex-col gap-4"
-              style={{ maxWidth: 320 }}
-            >
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span
-                    className="text-xs"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.45 0.04 220)",
-                    }}
-                  >
-                    ROOM SIZE
-                  </span>
-                  <span
-                    className="text-xs font-bold"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.78 0.18 192)",
-                    }}
-                  >
-                    {roomSize} FT
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={50}
-                  step={1}
-                  value={roomSize}
-                  onChange={(e) => setRoomSize(Number(e.target.value))}
-                  data-ocid="room.input"
-                  aria-label="Room size in feet"
-                  className="w-full"
-                  style={{ accentColor: "oklch(0.78 0.18 192)" }}
-                />
-                <div className="flex justify-between mt-1">
-                  <span
-                    className="text-xs"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.32 0.03 220)",
-                    }}
-                  >
-                    0 FT
-                  </span>
-                  <span
-                    className="text-xs"
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: "oklch(0.32 0.03 220)",
-                    }}
-                  >
-                    50 FT
-                  </span>
-                </div>
-              </div>
-              <div
-                className="p-3 rounded-xl"
-                style={{
-                  background: "oklch(0.12 0.02 265)",
-                  border: "1px solid oklch(0.20 0.025 265)",
-                }}
-              >
+              {["+12", "+6", "0", "-6", "-12"].map((db) => (
                 <div
-                  className="text-xs mb-1"
+                  key={db}
                   style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.45 0.04 220)",
+                    fontSize: "0.5rem",
+                    color: "rgba(255,215,0,0.4)",
+                    textAlign: "right",
+                    lineHeight: 1,
                   }}
                 >
-                  MAGNET STRENGTH
+                  {db}
                 </div>
-                <div
-                  className="text-2xl font-black"
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: "oklch(0.85 0.22 70)",
-                  }}
-                >
-                  {magnetStrength.toLocaleString()}W
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
-        </section>
 
-        {/* ── Blockchain Panel ── */}
-        <section
-          className="eng-panel rounded-2xl p-5"
-          data-ocid="blockchain.panel"
-        >
-          <SectionLabel>CHAIN BLOCK · ALL CONNECTED · VERIFIED</SectionLabel>
-          <div className="flex flex-wrap gap-3 mb-4">
-            {moduleNames.map((name, i) => {
-              const active = moduleStates[name as keyof typeof moduleStates];
-              return (
-                <div key={name} className="flex items-center gap-1.5">
-                  <motion.div
-                    className="flex items-center gap-1 px-3 py-2 rounded-lg"
+            {/* Bands */}
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                gap: 4,
+                justifyContent: "space-around",
+                alignItems: "flex-end",
+              }}
+            >
+              {EQ_BANDS.map((band, i) => {
+                const g = eqGains[i];
+                const isBoost = g > 0;
+                const isCut = g < 0;
+                return (
+                  <div
+                    key={band.freq}
                     style={{
-                      background: active
-                        ? "oklch(0.78 0.18 192 / 0.1)"
-                        : "oklch(0.12 0.015 265)",
-                      border: `1px solid ${active ? "oklch(0.78 0.18 192 / 0.4)" : "oklch(0.18 0.02 265)"}`,
-                      transition: "all 0.3s",
-                    }}
-                    animate={{
-                      boxShadow: active
-                        ? [
-                            "0 0 6px oklch(0.78 0.18 192 / 0.3)",
-                            "0 0 12px oklch(0.78 0.18 192 / 0.5)",
-                            "0 0 6px oklch(0.78 0.18 192 / 0.3)",
-                          ]
-                        : ["none"],
-                    }}
-                    transition={{
-                      repeat: Number.POSITIVE_INFINITY,
-                      duration: 2,
-                      delay: i * 0.15,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4,
+                      flex: 1,
                     }}
                   >
-                    <LucideLink
-                      size={10}
+                    {/* dB value */}
+                    <div
                       style={{
-                        color: active
-                          ? "oklch(0.78 0.18 192)"
-                          : "oklch(0.30 0.03 220)",
-                      }}
-                    />
-                    <span
-                      className="text-xs font-bold"
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        color: active
-                          ? "oklch(0.78 0.18 192)"
-                          : "oklch(0.35 0.03 220)",
+                        fontSize: "0.5rem",
+                        color: isBoost
+                          ? "#FFD700"
+                          : isCut
+                            ? "#4488ff"
+                            : "rgba(255,255,255,0.3)",
+                        fontWeight: 700,
+                        textShadow: isBoost
+                          ? "0 0 6px rgba(255,215,0,0.8)"
+                          : isCut
+                            ? "0 0 6px rgba(68,136,255,0.8)"
+                            : "none",
                       }}
                     >
-                      {name.toUpperCase()}
-                    </span>
-                  </motion.div>
-                  {i < moduleNames.length - 1 && (
-                    <span
+                      {g > 0 ? `+${g}` : g}
+                    </div>
+
+                    {/* Slider track + indicator */}
+                    <div
                       style={{
-                        color: active
-                          ? "oklch(0.78 0.18 192 / 0.5)"
-                          : "oklch(0.22 0.02 265)",
+                        position: "relative",
+                        height: 140,
+                        width: 28,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      ⛓
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                      {/* Visual track */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          width: 4,
+                          height: "100%",
+                          background: "rgba(255,215,0,0.08)",
+                          borderRadius: 2,
+                        }}
+                      >
+                        {/* Center line */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "50%",
+                            left: -6,
+                            right: -6,
+                            height: 1,
+                            background: "rgba(255,215,0,0.2)",
+                          }}
+                        />
+                        {/* Fill above/below center */}
+                        {g !== 0 && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              width: "100%",
+                              background: isBoost
+                                ? "linear-gradient(to top, rgba(255,215,0,0.4), rgba(255,215,0,0.8))"
+                                : "linear-gradient(to bottom, rgba(68,136,255,0.4), rgba(68,136,255,0.8))",
+                              top: isBoost ? `${50 - (g / 12) * 50}%` : "50%",
+                              height: `${(Math.abs(g) / 12) * 50}%`,
+                              borderRadius: 2,
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Actual range input */}
+                      <input
+                        type="range"
+                        data-ocid={`eq.slider.${i + 1}`}
+                        min={-12}
+                        max={12}
+                        step={0.5}
+                        value={g}
+                        onChange={(e) => setEqBand(i, Number(e.target.value))}
+                        className="eq-slider-input"
+                        style={{ position: "absolute", zIndex: 5 }}
+                      />
+                    </div>
+
+                    {/* Freq label */}
+                    <div
+                      style={{
+                        fontSize: "0.48rem",
+                        color: "rgba(255,215,0,0.5)",
+                        textAlign: "center",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {band.label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── ROW 6: 4 Sound Engines ──────────────────────────────────────── */}
+        <section style={{ marginBottom: 24 }}>
+          <div className="gold-label" style={{ marginBottom: 12 }}>
+            4 SOUND ENGINES — INDEPENDENT CONTROL
           </div>
           <div
-            className="flex items-center gap-3 p-3 rounded-xl"
             style={{
-              background: "oklch(0.12 0.02 265)",
-              border: "1px solid oklch(0.20 0.025 265)",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 16,
             }}
           >
-            <LucideRadio size={14} style={{ color: "oklch(0.72 0.22 145)" }} />
-            <div>
+            {engines.map((engine, idx) => (
               <div
-                className="text-xs"
+                key={
+                  ["engine-smart", "engine-freq", "engine-app", "engine-stab"][
+                    idx
+                  ]
+                }
+                data-ocid={`engine.panel.${idx + 1}`}
+                className="glass-panel"
                 style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: "oklch(0.42 0.04 220)",
+                  padding: 16,
+                  opacity: engine.on ? 1 : 0.5,
+                  transition: "opacity 0.3s",
+                  borderColor: engine.on
+                    ? "rgba(255,215,0,0.4)"
+                    : "rgba(255,215,0,0.1)",
+                  boxShadow: engine.on
+                    ? "0 0 16px rgba(255,215,0,0.1)"
+                    : "none",
                 }}
               >
-                BLOCK HASH
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "#FFD700",
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                      }}
+                    >
+                      ENGINE {idx + 1}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.5rem",
+                        color: "rgba(255,215,0,0.4)",
+                      }}
+                    >
+                      {
+                        [
+                          "SMART PROCESSOR",
+                          "FREQUENCY SIGNAL",
+                          "APP GENERATOR",
+                          "STABILIZER",
+                        ][idx]
+                      }
+                    </div>
+                  </div>
+
+                  {/* Status LED */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        background: engine.on ? "#00ff88" : "#ff3333",
+                        boxShadow: engine.on
+                          ? "0 0 8px #00ff88"
+                          : "0 0 8px #ff3333",
+                        animation:
+                          engine.on && isPlaying
+                            ? "led-blink 0.5s ease-in-out infinite"
+                            : "none",
+                      }}
+                    />
+                    <div
+                      style={{
+                        fontSize: "0.45rem",
+                        color: engine.on ? "#00ff88" : "#ff3333",
+                      }}
+                    >
+                      {engine.on ? "ON" : "OFF"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gain knob */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <RotaryKnob
+                    value={engine.gain}
+                    onChange={(val) => setEngineGain(idx, val)}
+                  />
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "0.55rem",
+                        color: "rgba(255,215,0,0.5)",
+                      }}
+                    >
+                      GAIN
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.9rem",
+                        color: "#FFD700",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {engine.gain}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Power toggle */}
+                <button
+                  type="button"
+                  data-ocid={`engine.toggle.${idx + 1}`}
+                  onClick={() => toggleEngine(idx)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 0",
+                    background: engine.on
+                      ? "rgba(255,215,0,0.12)"
+                      : "rgba(255,50,50,0.08)",
+                    border: `1px solid ${engine.on ? "rgba(255,215,0,0.4)" : "rgba(255,50,50,0.3)"}`,
+                    borderRadius: 4,
+                    color: engine.on ? "#FFD700" : "#ff6666",
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: "0.6rem",
+                    letterSpacing: "0.15em",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {engine.on ? "⏻ POWERED ON" : "⏻ POWERED OFF"}
+                </button>
+
+                {/* Engine stats */}
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 4,
+                  }}
+                >
+                  {[
+                    ["WATT", `${Math.round(engine.gain * 200)}W`],
+                    ["FREQ", engine.on ? "ACTIVE" : "IDLE"],
+                  ].map(([k, v]) => (
+                    <div
+                      key={k}
+                      style={{
+                        fontSize: "0.5rem",
+                        color: "rgba(255,215,0,0.35)",
+                        borderTop: "1px solid rgba(255,215,0,0.06)",
+                        paddingTop: 4,
+                      }}
+                    >
+                      {k}:{" "}
+                      <span style={{ color: "rgba(255,215,0,0.6)" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <motion.div
-                className="text-sm font-black"
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: "oklch(0.72 0.22 145)",
-                }}
-                key={blockHash}
-                initial={{ opacity: 0.5 }}
-                animate={{ opacity: 1 }}
-              >
-                {blockHash}
-              </motion.div>
-            </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── ROW 7: Blockchain Panel ─────────────────────────────────────── */}
+        <section
+          className="glass-panel"
+          data-ocid="blockchain.panel"
+          style={{ padding: 20, marginBottom: 24 }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 16,
+            }}
+          >
             <div
-              className="ml-auto text-xs"
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                color: "oklch(0.38 0.04 220)",
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#00ff88",
+                boxShadow: "0 0 8px #00ff88",
+                animation: "led-blink 2s ease-in-out infinite",
+              }}
+            />
+            <span
+              className="gold-text"
+              style={{
+                fontSize: "0.75rem",
+                letterSpacing: "0.2em",
+                fontWeight: 700,
               }}
             >
-              UPDATES EVERY 5s
+              BLOCKCHAIN STATE LEDGER — SOUND VERIFICATION
+            </span>
+          </div>
+
+          {blockchainLog.length === 0 ? (
+            <div
+              style={{
+                fontSize: "0.6rem",
+                color: "rgba(255,215,0,0.3)",
+                textAlign: "center",
+                padding: "20px 0",
+              }}
+            >
+              NO STATE CHANGES RECORDED
             </div>
-          </div>
-        </section>
+          ) : (
+            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              {blockchainLog.map((entry) => (
+                <div
+                  key={`block-${entry.hash}`}
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    padding: "6px 0",
+                    borderBottom: "1px solid rgba(255,215,0,0.06)",
+                    fontSize: "0.55rem",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "rgba(0,255,136,0.6)",
+                      fontFamily: "JetBrains Mono, monospace",
+                    }}
+                  >
+                    #{entry.hash}
+                  </span>
+                  <span style={{ color: "rgba(255,215,0,0.5)" }}>
+                    {entry.action}
+                  </span>
+                  <span style={{ color: "rgba(255,255,255,0.7)" }}>
+                    {entry.value}
+                  </span>
+                  <span
+                    style={{
+                      color: "rgba(255,215,0,0.25)",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    {new Date(entry.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* ── DJ Studio ── */}
-        <section
-          className="eng-panel rounded-2xl p-5"
-          data-ocid="djstudio.panel"
-        >
-          <SectionLabel>
-            DJ STUDIO · CONTROL PANEL · 8 EFFECT SWITCHES
-          </SectionLabel>
-          <div className="grid grid-cols-4 gap-3">
-            {DJ_SWITCH_NAMES.map((name, i) => (
-              <motion.button
-                key={name}
-                type="button"
-                data-ocid={`djstudio.toggle.${i + 1}`}
-                className="py-4 px-3 rounded-xl font-black text-sm tracking-widest transition-all"
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  background: djActive[i]
-                    ? "oklch(0.78 0.18 192 / 0.15)"
-                    : "oklch(0.12 0.018 265)",
-                  border: `1px solid ${djActive[i] ? "oklch(0.78 0.18 192 / 0.6)" : "oklch(0.20 0.025 265)"}`,
-                  color: djActive[i]
-                    ? "oklch(0.84 0.18 192)"
-                    : "oklch(0.42 0.04 220)",
-                  boxShadow: djActive[i]
-                    ? "0 0 16px oklch(0.78 0.18 192 / 0.4), inset 0 1px 0 oklch(0.78 0.18 192 / 0.2)"
-                    : "inset 0 1px 0 oklch(0.25 0.03 265 / 0.3)",
-                }}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() =>
-                  setDjActive((prev) => {
-                    const n = [...prev];
-                    n[i] = !n[i];
-                    return n;
-                  })
-                }
-                aria-pressed={djActive[i]}
-                aria-label={`${name} effect`}
-              >
-                {name}
-              </motion.button>
-            ))}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {DJ_SWITCH_NAMES.filter((_, i) => djActive[i]).map((name) => (
-              <span
-                key={name}
-                className="px-2 py-0.5 rounded-full text-xs"
-                style={{
-                  background: "oklch(0.78 0.18 192 / 0.1)",
-                  border: "1px solid oklch(0.78 0.18 192 / 0.3)",
-                  color: "oklch(0.78 0.18 192)",
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                {name} ON
-              </span>
-            ))}
-            {!djActive.some(Boolean) && (
-              <span
-                className="text-xs"
-                style={{
-                  color: "oklch(0.35 0.03 220)",
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                NO EFFECTS ACTIVE
-              </span>
-            )}
-          </div>
-        </section>
-      </main>
-
-      <footer
-        className="py-4 px-6 text-center border-t"
-        style={{ borderColor: "oklch(0.15 0.02 265)" }}
-      >
-        <p className="text-xs" style={{ color: "oklch(0.35 0.03 220)" }}>
-          © {currentYear}. Built with ❤️ using{" "}
-          <a
-            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-            style={{ color: "oklch(0.55 0.1 192)" }}
+          {/* Chain stats */}
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              gap: 24,
+              flexWrap: "wrap",
+            }}
           >
-            caffeine.ai
-          </a>
-        </p>
-      </footer>
+            {[
+              ["CHAIN", "MAINNET-1"],
+              ["BLOCKS", blockchainLog.length.toString()],
+              ["STATUS", "VERIFIED"],
+              ["NODE", "GERROD-P2"],
+            ].map(([k, v]) => (
+              <div
+                key={k}
+                style={{ fontSize: "0.55rem", color: "rgba(255,215,0,0.4)" }}
+              >
+                {k}: <span style={{ color: "rgba(255,215,0,0.7)" }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        <footer
+          style={{
+            textAlign: "center",
+            paddingTop: 24,
+            borderTop: "1px solid rgba(255,215,0,0.1)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "0.55rem",
+              color: "rgba(255,215,0,0.3)",
+              letterSpacing: "0.15em",
+            }}
+          >
+            © {new Date().getFullYear()} GERROD | ENGINEER | PRODUCT 2 — 80,000W
+            · 4 SOUND ENGINES · BLOCKCHAIN VERIFIED
+          </div>
+          <div
+            style={{
+              fontSize: "0.5rem",
+              color: "rgba(255,215,0,0.15)",
+              marginTop: 6,
+            }}
+          >
+            Built with ♥ using{" "}
+            <a
+              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "rgba(255,215,0,0.3)", textDecoration: "none" }}
+            >
+              caffeine.ai
+            </a>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }

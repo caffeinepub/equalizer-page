@@ -1,40 +1,34 @@
-# Gerrod | Engineer | Product 2
+# Gerrod Engineer Product 2
 
 ## Current State
-EQ Studio with 30-band graphic equalizer, music player (4 tracks, play/pause/prev/next, volume, shuffle/repeat), real-time EQ curve, and preset system. Clean dark UI.
+Large App.tsx (~2959 lines) with book-style intro, 30-band EQ, music player with file picker, 4 sound engines, blockchain panel, waveform visualizer. Dark navy/black color scheme.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Book-style opening animation: app pages open like a book revealing the interface
-- Hero/branding intro panel: "Gerrod | Engineer | Product 2 | 80,000 Watts | 4 Sound Engines" with blockchain badge
-- Smart Chip SRS-22 section: 3 independent volume sliders (Volume 1/2/3), each with dB readout, booster up to 1500W
-- 4 Sound Engines panel: each engine has on/off toggle, individual amp slider (0-120W), gain level, connected indicator light; turning one off dims connected engines
-- Stabilizer panel: 80,000W zero-center epicenter gauge (big dial/slider), boost/cut meter, harmonic % readout
-- Compressor/Monitor panel: signal correction meter (0-100% harmonic), input/output level bars, noise floor indicator
-- Room Magnet panel: room size slider (0-50ft), virtual sound radius that grows visually as size increases, centered position indicator
-- Blockchain chain panel: animated chain link indicator showing all modules verified/connected, live block hash display (simulated)
-- DJ Studio panel: 8 effect switches (reverb, delay, chorus, flare, gate, compress, saturate, spread), each toggle-able and glows when active
-- Epicenter gauge: large center dial showing 0-center position for all signal levels, runs through all sections
-- All controls functional: every slider, knob, toggle, switch changes visible state and affects related displays
+- 2 physical battery displays (each rated 800,000 mAh), combined total shown as 1,600,000
+- Battery charger unit displaying 200,000 output wattage
+- Animated battery charging sequence: batteries visually fill up from 0% to 100% before music can play
+- Music playback locked until both batteries reach 100% charge
+- Equalizer sliders wired to Web Audio API so moving any band up/down makes an audible effect on playing audio
+- Dark blue (#0a1628 deep navy) and yellow (#FFD700 gold) as primary color scheme
+- Super high resolution premium visual quality (sharp gradients, glowing edges, metallic textures via CSS)
 
 ### Modify
-- Header: rebrand from "EQ Studio" to "Gerrod | Engineer | Product 2"
-- EQ section: keep 30-band but wire gains to stabilizer output (stabilizer gain multiplies EQ output level display)
-- Overall layout: sections arranged in a premium engineering console style, top to bottom flow
+- Color scheme: replace current dark/teal with dark blue + yellow/gold throughout
+- Battery section replaces or augments the existing engine power display
+- File picker remains, but playback button is disabled with a visual lock until batteries are charged
+- EQ sliders now control real Web Audio API biquad filter nodes
+- Waveform visualizer stays but reacts to actual audio frequencies
 
 ### Remove
-- Nothing removed
+- Nothing removed -- all existing features kept
 
 ## Implementation Plan
-1. Add book-open intro animation (CSS perspective transform, two pages swing open)
-2. Rebrand header with Gerrod branding + blockchain badge + 80k watts display
-3. Add Smart Chip SRS-22 component with 3 volume sliders, booster indicator
-4. Add 4 Sound Engines component: each engine card with power toggle, amp fader, status LED
-5. Add Stabilizer/Epicenter component: large zero-center dial with harmonic % readout
-6. Add Monitor/Compressor component: dual-bar input/output VU meters, harmonic correction display
-7. Add Room Magnet component: room size slider with expanding circle visualization
-8. Add Blockchain panel: animated chain links, simulated hash, all-connected status
-9. Add DJ Studio switcher: 8 toggle buttons with glow-on-active effect
-10. Wire all controls: engines affect master level, stabilizer affects curve display, room size affects volume display, DJ switches affect curve shape
-11. Keep existing 30-band EQ + curve + presets + music player
+1. Build BatteryUnit component: animated SVG battery with fill animation from 0-100%, labeled 800,000 mAh, glowing yellow when full
+2. Build BatteryCharger component: shows 200,000W charger, charging progress bar, start charge button
+3. Build charging state machine: when user hits "Charge", both batteries animate filling over ~5 seconds. Once 100%, music player unlocks
+4. Wire Web Audio API: AudioContext -> source -> 10-band BiquadFilterNode chain -> AnalyserNode -> destination. EQ sliders set filter gain in real time
+5. File picker loads audio file into AudioBufferSourceNode or MediaElementSource
+6. Apply dark blue / gold color scheme across all panels
+7. Keep all existing components: 4 sound engines, blockchain panel, 30-band EQ bands, waveform, book intro
