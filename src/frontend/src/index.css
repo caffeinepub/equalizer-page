@@ -25,36 +25,36 @@
 
 @layer base {
   :root {
-    --background: 0.09 0.015 265;
+    --background: 0.07 0.015 265;
     --foreground: 0.94 0.02 200;
-    --card: 0.11 0.018 265;
+    --card: 0.1 0.018 265;
     --card-foreground: 0.94 0.02 200;
-    --popover: 0.11 0.018 265;
+    --popover: 0.1 0.018 265;
     --popover-foreground: 0.94 0.02 200;
     --primary: 0.78 0.18 192;
-    --primary-foreground: 0.09 0.015 265;
-    --secondary: 0.15 0.025 265;
+    --primary-foreground: 0.07 0.015 265;
+    --secondary: 0.14 0.025 265;
     --secondary-foreground: 0.85 0.04 200;
-    --muted: 0.14 0.02 265;
+    --muted: 0.13 0.02 265;
     --muted-foreground: 0.55 0.04 220;
-    --accent: 0.68 0.22 300;
-    --accent-foreground: 0.94 0.02 200;
+    --accent: 0.85 0.22 70;
+    --accent-foreground: 0.07 0.015 265;
     --destructive: 0.62 0.22 25;
     --destructive-foreground: 0.94 0.02 200;
     --border: 0.18 0.025 265;
-    --input: 0.16 0.022 265;
+    --input: 0.15 0.022 265;
     --ring: 0.78 0.18 192;
     --radius: 0.5rem;
     --chart-1: 0.78 0.18 192;
-    --chart-2: 0.68 0.22 300;
-    --chart-3: 0.72 0.2 160;
+    --chart-2: 0.85 0.22 70;
+    --chart-3: 0.72 0.22 145;
     --chart-4: 0.65 0.2 240;
-    --chart-5: 0.75 0.18 220;
-    --sidebar: 0.09 0.015 265;
+    --chart-5: 0.68 0.22 300;
+    --sidebar: 0.07 0.015 265;
     --sidebar-foreground: 0.94 0.02 200;
     --sidebar-primary: 0.78 0.18 192;
-    --sidebar-primary-foreground: 0.09 0.015 265;
-    --sidebar-accent: 0.15 0.025 265;
+    --sidebar-primary-foreground: 0.07 0.015 265;
+    --sidebar-accent: 0.14 0.025 265;
     --sidebar-accent-foreground: 0.85 0.04 200;
     --sidebar-border: 0.18 0.025 265;
     --sidebar-ring: 0.78 0.18 192;
@@ -69,6 +69,29 @@
     @apply bg-background text-foreground;
     font-family: "Satoshi", sans-serif;
   }
+}
+
+/* ── Engineering Panel ────────────────────────────────────────────── */
+.eng-panel {
+  background: linear-gradient(
+    160deg,
+    oklch(0.115 0.022 265) 0%,
+    oklch(0.09 0.016 265) 100%
+  );
+  border: 1px solid oklch(0.22 0.028 265);
+  box-shadow: inset 0 1px 0 oklch(0.3 0.04 265 / 0.4), inset 0 -1px 0
+    oklch(0.05 0.01 265 / 0.6), 0 4px 32px oklch(0 0 0 / 0.4);
+}
+
+/* ── Engineering Label ──────────────────────────────────────────── */
+.eng-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: oklch(0.5 0.08 192);
+  white-space: nowrap;
 }
 
 /* ── Music Player Card ────────────────────────────────────────── */
@@ -96,7 +119,7 @@
     oklch(0.88 0.18 192),
     oklch(0.72 0.2 192)
   );
-  color: oklch(0.09 0.015 265);
+  color: oklch(0.07 0.015 265);
   border: none;
   cursor: pointer;
   box-shadow: 0 0 20px oklch(0.78 0.18 192 / 0.6), 0 0 40px
@@ -111,7 +134,7 @@
     oklch(1 0 0 / 0.2);
 }
 
-/* ── Player Control Buttons ───────────────────────────────────── */
+/* ── Player Control Buttons ──────────────────────────────────────── */
 .player-ctrl-btn {
   width: 36px;
   height: 36px;
@@ -132,7 +155,7 @@
   border-color: oklch(0.78 0.18 192 / 0.2);
 }
 
-/* ── Volume Slider ────────────────────────────────────────────── */
+/* ── Volume Slider ──────────────────────────────────────────────── */
 .volume-slider {
   position: absolute;
   inset: 0;
@@ -144,7 +167,7 @@
   padding: 0;
 }
 
-/* ── Fader Vertical Range Input ───────────────────────────────── */
+/* ── Fader Vertical Range Input ───────────────────────────────────── */
 .fader-input {
   writing-mode: vertical-lr;
   direction: rtl;
@@ -163,7 +186,7 @@
   z-index: 10;
 }
 
-/* ── EQ Curve Glow ────────────────────────────────────────────── */
+/* ── EQ Curve Glow ─────────────────────────────────────────────── */
 @keyframes glow-pulse {
   0%,
   100% {
@@ -178,7 +201,7 @@
   animation: glow-pulse 3s ease-in-out infinite;
 }
 
-/* ── Scrollbar Styling ────────────────────────────────────────── */
+/* ── Scrollbar Styling ────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   height: 4px;
   width: 4px;
